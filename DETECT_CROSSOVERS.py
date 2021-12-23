@@ -30,26 +30,16 @@ leg_tuple = collections.namedtuple('leg_tuple', ('chr_id', 'pos', 'ref', 'alt'))
 sam_tuple = collections.namedtuple('sam_tuple', ('sample_id', 'group1', 'group2', 'sex')) #Encodes the rows of the samples table
 obs_tuple = collections.namedtuple('obs_tuple', ('pos', 'read_id', 'base')) #Encodes the rows of the observations table
 comb_tuple = collections.namedtuple('comb_tuple', ('ref','alt','hap'))
-admix_tuple = collections.namedtuple('admix_tuple', ('group2', 'proportion'))
 
-if platform.python_implementation()=='PyPy':
-    class PopCount:
-        def __init__(self):
-            self.A = bytes((bin(i).count('1') for i in range(1<<20)))
-    
-        def __call__(self,x):
-            result = 0
-            while(x): result += self.A[x & 1048575]; x >>= 20
-            return result
-    popcount = PopCount()
-else:
-    try: 
+### Getting a function to count non-zero bits in positive integer.
+try:
+    if platform.python_implementation()=='PyPy':
+        from pypy3_popcounts.popcounts import popcount
+    else:
         from gmpy2 import popcount
-    except ModuleNotFoundError: 
-        print('caution: the module gmpy2 is missing.')
-        def popcount(x):
-            """ Counts non-zero bits in positive integer. """
-            return bin(x).count('1')
+except Exception as err: 
+    print(err)
+    popcount = lambda x: bin(x).count('1')
 
 try:
     from math import comb
@@ -383,9 +373,11 @@ def save_results(likelihoods,info,compress,obs_filename,output_filename,output_d
     ext = ('.'+compress) * (compress in ('bz2','gz'))
     obs_filename_stripped =  obs_filename.rsplit('/', 1).pop()
     default_output_filename = re.sub('(.*)obs.p(.*)',f'\\1LLR.p{ext:s}', obs_filename_stripped, 1)
-    output_filename = default_output_filename * (output_filename=='')
+    if output_filename=='': output_filename = default_output_filename
+    
     output_dir = re.sub('/$','',output_dir)+'/' #undocumented option
     if output_dir!='' and not os.path.exists(output_dir): os.makedirs(output_dir)
+    
     with Open(output_dir + output_filename, "wb") as f:
         pickle.dump(likelihoods, f, protocol=4)
         pickle.dump(info, f, protocol=4)

@@ -26,24 +26,15 @@ leg_tuple = collections.namedtuple('leg_tuple', ('chr_id', 'pos', 'ref', 'alt'))
 sam_tuple = collections.namedtuple('sam_tuple', ('sample_id', 'group1', 'group2', 'sex')) #Encodes the rows of the samples table
 obs_tuple = collections.namedtuple('obs_tuple', ('pos', 'read_id', 'base')) #Encodes the rows of the observations table
      
-if platform.python_implementation()=='PyPy':
-    class PopCount:
-        def __init__(self):
-            self.A = bytes((bin(i).count('1') for i in range(1<<20)))
-    
-        def __call__(self,x):
-            result = 0
-            while(x): result += self.A[x & 1048575]; x >>= 20
-            return result
-    popcount = PopCount()
-else:
-    try: 
+### Getting a function to count non-zero bits in positive integer.
+try:
+    if platform.python_implementation()=='PyPy':
+        from pypy3_popcounts.popcounts import popcount
+    else:
         from gmpy2 import popcount
-    except ModuleNotFoundError: 
-        print('caution: the module gmpy2 is missing.')
-        def popcount(x):
-            """ Counts non-zero bits in positive integer. """
-            return bin(x).count('1')
+except Exception as err: 
+    print(err)
+    popcount = lambda x: bin(x).count('1')
     
     
 
