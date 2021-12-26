@@ -29,14 +29,13 @@ obs_tuple = collections.namedtuple('obs_tuple', ('pos', 'read_id', 'base')) #Enc
 ### Getting a function to count non-zero bits in positive integer.
 try:
     if platform.python_implementation()=='PyPy':
-        from pypy3_popcounts.popcounts import popcount
+        from POPCOUNTS import get_popcount
+        popcount = get_popcount(64)
     else:
         from gmpy2 import popcount
 except Exception as err: 
     print(err)
     popcount = lambda x: bin(x).count('1')
-    
-    
 
 class homogeneous:
     """ Based on the statisitcal models (models_dict) and the reference panel

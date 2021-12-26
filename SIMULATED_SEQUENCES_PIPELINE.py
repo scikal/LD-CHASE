@@ -15,6 +15,8 @@ import time, sys, random, os, operator, collections
 from random import sample, choices, seed, choice
 from multiprocessing import Process
 
+### import pypy3_popcounts.build
+
 if sys.platform == "linux" or sys.platform == "linux2":
     print('Detected a linux OS.')
     HOME='home'
@@ -36,10 +38,6 @@ sam_tuple = collections.namedtuple('sam_tuple', ('sample_id', 'group1', 'group2'
 obs_tuple = collections.namedtuple('obs_tuple', ('pos', 'read_id', 'base')) #Encodes the rows of the observations table
 
 ref_path = f'/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/'
-
-
-
-
 
 def read_ref(filename):
     with open(filename, 'r') as data_in:
@@ -111,26 +109,9 @@ def simulate_haploids(sample_id,sp,chr_id,genotypes,output_dir):
     sam_filename = ref_path + f'{sp:s}_panel/{sp:s}_panel.samples.gz'
     return extract(leg_filename,hap_filename,sam_filename,chr_id,sample_id,genotypes=genotypes,output_dir=output_dir)
 
-def main(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions=[],mismatch=False):
-    work_dir = work_dir.rstrip('/') + '/' if len(work_dir)!=0 else ''
-    #####################
-    SPsorted = {('EUR_EAS'): 'EAS_EUR',
-                ('EAS_EUR'): 'EAS_EUR',
-                ('EUR_SAS'): 'SAS_EUR',
-                ('SAS_EUR'): 'SAS_EUR',
-                ('EAS_SAS'): 'EAS_SAS',
-                ('SAS_EAS'): 'EAS_SAS',
-                ('AFR_EUR'): 'AFR_EUR',
-                ('EUR_AFR'): 'AFR_EUR',
-                'EUR': 'EUR',
-                'EAS': 'EAS',
-                'SAS': 'SAS',
-                'AMR': 'AMR',
-                'AFR': 'AFR'}
-    #####################
+def sample_indv(sp):    
     seed(None, version=2)
     list_SP = sp.split('_')
-    effective_SP = SPsorted[sp] 
     if len(list_SP)==1:
         INDIVIDUALS = read_ref(ref_path + f"samples_per_panel/{sp:s}_panel.txt") 
         A = sample(INDIVIDUALS,k=3)
@@ -152,10 +133,18 @@ def main(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_prop
         print('error: unsupported sp value.')
 
     C = [i+j for i,j in zip(A,B)]
-    print(C)
-    #####################
+    return A,B,C 
 
-    for a,b in zip(A,B): simulate_haploids(a, SPsorted[sp], chr_id, b, work_dir)
+
+def main(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions=[],mismatch=False):
+    work_dir = work_dir.rstrip('/') + '/' if len(work_dir)!=0 else ''
+    SPsorted = {('EUR_EAS'): 'EAS_EUR', ('EAS_EUR'): 'EAS_EUR', ('EUR_SAS'): 'SAS_EUR', ('SAS_EUR'): 'SAS_EUR', ('EAS_SAS'): 'EAS_SAS', ('SAS_EAS'): 'EAS_SAS', ('AFR_EUR'): 'AFR_EUR', ('EUR_AFR'): 'AFR_EUR', 'EUR': 'EUR', 'EAS': 'EAS', 'SAS': 'SAS', 'AMR': 'AMR', 'AFR': 'AFR'}
+    A,B,C = sample_indv(sp)
+
+    print('Simulating effective haploids:')    
+    for a,b in zip(A,B): 
+        print(a+b)
+        simulate_haploids(a, SPsorted[sp], chr_id, b, work_dir)
     sim_obs_tabs = [f'{work_dir:s}{c:s}.{chr_id:s}.hg38.obs.p' for c in C]
     fns = MixHaploids_wrapper(*sim_obs_tabs, read_length=read_length, depth=depth, scenarios=('disomy','monosomy'),
                                     transitions=transitions(chr_id), compress='bz2', output_dir=work_dir, 
@@ -165,11 +154,11 @@ def main(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_prop
     print(monosomy_obs_filename)
     
     if mismatch:
-        effective_SP = choice(list_SP)
+        effective_SP = choice(sp.split('_'))
         ancestral_makeup = {}
     else:
         effective_SP = SPsorted[sp] 
-        ancestral_makeup = dict(zip(list_SP,admixture_proportions))
+        ancestral_makeup = dict(zip(sp.split('_'),admixture_proportions))
         
     #print(effective_SP)
     print(ancestral_makeup)
@@ -188,7 +177,7 @@ if __name__ == "__main__":
     sp='EUR_EAS' #'EUR_EAS'
     chr_id='chr16'
     read_length = 75
-    min_reads,max_reads = 10,5
+    min_reads,max_reads = 12,6
     work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/LD-PGTA_SE/results"
     mismatch = False #Partial mismatch of reference panel for admixtures.
     main(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch)

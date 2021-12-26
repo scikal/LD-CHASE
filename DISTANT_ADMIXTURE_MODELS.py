@@ -33,7 +33,8 @@ spanel_tuple = collections.namedtuple('spanel_tuple', ('group2', 'flag', 'hap_nu
 ### Getting a function to count non-zero bits in positive integer.
 try:
     if platform.python_implementation()=='PyPy':
-        from pypy3_popcounts.popcounts import popcount
+        from POPCOUNTS import get_popcount
+        popcount = get_popcount(64)
     else:
         from gmpy2 import popcount
 except Exception as err: 
@@ -337,9 +338,9 @@ else:
     sys.exit(0)
 
 ###############################   END OF FILE   ###############################
+
+
 """
-
-
 if __name__ != "__main__":
     print("The module DISTANT_ADMIXTURE_MODELS was imported.")
 else:
@@ -367,7 +368,7 @@ else:
     likelihoods5 = A.likelihoods5
 
 
-    random.seed(a=2021, version=2)
+    random.seed(a=2022, version=2)
     x = random.randrange(len(alleles)-16)
     haplotypes = (alleles[x:x+4],alleles[x+4:x+8],alleles[x+8:x+12],alleles[x+12:x+16])
 
