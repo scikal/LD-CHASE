@@ -276,18 +276,18 @@ where the first argument is the path of a directory that contains LLR files with
 
 | Optional argument  | Description |
 | --- | --- |
-| `--number-of-bins` | _The genome is divided into bins and for each bin a ROC curve is calculated._ |
-| `--compress` | _Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed._ |
-| `--ancestral-makeup` | _Apply a criterion for the ancestral makeup: <br/> a. For non-admixtures the argument consists a single superpopulation, e.g., EUR. <br/> b. For recent admixtures the argument consists two superpopulations, e.g., EUR EAS. <br/> c. For distant admixtures the argument consists of the superpoplations and their proportions, e.g, EUR 0.8 EAS 0.1 SAS 0.1._ |
-| `--chr-id` | _Apply a criterion for the chromosome number, e.g., chrX._ |
-| `--window-size` | _Apply a criterion for the size of the genomic window._ |
-| `--subsamples` | _Apply a criterion for the number of subsamples per genomic window._ |
-| `--min-reads` | _Apply a criterion for the minimal number of reads per homolog, admitting non-zero score._ |
-| `--max-reads` | _Apply a criterion for the maximal number of sampled reads per homolog and per bootstrap iteration._ |
-| `--min-HF` | _Apply a criterion for the minimal haplotype frequency_ |
-| `--min-score` | _Apply a criterion for the minimal score of a read._ |
-| `--read-length` | _Apply a criterion for the number of base pairs in read._ |
-| `--depth` | _Apply a criterion for the depth of coverage per homolog._ |
+| `--number-of-bins <INT>` | _The genome is divided into bins and for each bin a ROC curve is calculated. Default value is 15._ |
+| `--compress <gz/bz2/unc>` | _Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed._ |
+| `--ancestral-makeup <STR>` | _Apply a criterion for the ancestral makeup: <br/> a. For non-admixtures the argument consists a single superpopulation, e.g., EUR. <br/> b. For recent admixtures the argument consists two superpopulations, e.g., EUR EAS. <br/> c. For distant admixtures the argument consists of the superpoplations and their proportions, e.g, EUR 0.8 EAS 0.1 SAS 0.1._ |
+| `--chr-id <STR>` | _Apply a criterion for the chromosome number, e.g., chrX._ |
+| `--window-size <INT>` | _Apply a criterion for the size of the genomic window._ |
+| `--subsamples <INT>` | _Apply a criterion for the number of subsamples per genomic window._ |
+| `--min-reads <INT>` | _Apply a criterion for the minimal number of reads per homolog, admitting non-zero score._ |
+| `--max-reads <INT>` | _Apply a criterion for the maximal number of sampled reads per homolog and per bootstrap iteration._ |
+| `--min-HF <FLOAT>` | _Apply a criterion for the minimal haplotype frequency_ |
+| `--min-score <INT>` | _Apply a criterion for the minimal score of a read._ |
+| `--read-length <INT>` | _Apply a criterion for the number of base pairs in read._ |
+| `--depth <INT>` | _Apply a criterion for the depth of coverage per homolog._ |
 
 # Description of the IMPUTE2 format for reference panels #
 <a name="IMPUTE2"/>
