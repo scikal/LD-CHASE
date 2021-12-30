@@ -257,7 +257,7 @@ if __name__ == "__main__":
     parser.add_argument('output_filename', type=str, metavar='OUTPUT_FILENAME',
                         help='The output filename.')
     parser.add_argument('-n', '--number-of-bins', type=int, metavar='INT',  default='15',
-                        help='The genome is divided into bins and for each bin a ROC curve is calculated.')
+                        help='The genome is divided into bins and for each bin a ROC curve is calculated. Default value is 15.')
     parser.add_argument('-c', '--compress', metavar='gz/bz2/unc', type=str, default='unc',  choices=['gz','bz2','unc'],
                         help='Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed.')
     parser.add_argument('-a', '--ancestral-makeup', metavar='STR', nargs='+',
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--subsamples', type=int, metavar='INT', 
                         help='Apply a criterion for the number of subsamples per genomic window.')
     parser.add_argument('-m', '--min-reads', type=int, metavar='INT',
-                        help='Apply a criterion for the minimal number of reads per homolog, admitting non-zero score.')
+                        help='Apply a criterion for the minimal number of reads in a genomic window, per homolog.')
     parser.add_argument('-M', '--max-reads', type=int, metavar='INT',
                         help='Apply a criterion for the maximal number of sampled reads per homolog and per bootstrap iteration.')
     parser.add_argument('-f', '--min-HF', type=float, metavar='FLOAT',
