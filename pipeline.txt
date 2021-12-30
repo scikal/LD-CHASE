@@ -1,7 +1,7 @@
 ## Table of Contents  
 
 #### Introduction
-[What is LD-PGTA?](#background)
+[What is CONTRAST-CROSSOVERS?](#background)
 
 #### Tutorial
 [Stage 1: Sequence alignment](#seq_alignment) \
@@ -12,10 +12,11 @@
 
 #### Additional documentation
 [Simulating various forms of trisomy](#simulate) \
+[Balanced ROC analysis](#ROC_analysis) \
 [Description of the IMPUTE2 format for reference panels](#IMPUTE2) \
 [Generating IMPUTE2 reference panels from a VCF file](#"VCF2IMPUTE")
 
-# What is LD-PGTA? #
+# What is CONTRAST-CROSSOVERS? #
 <a name="background"/>
 
 Extra or missing chromosomes—a phenomenon termed aneuploidy—frequently arises during human meiosis and embryonic mitosis and is the leading cause of pregnancy loss, including in the context of *in vitro* fertilization (IVF). While meiotic aneuploidies affect all cells and are deleterious, mitotic errors generate mosaicism, which may be compatible with healthy live birth. Large-scale abnormalities such as triploidy and haploidy also contribute to adverse pregnancy outcomes, but remain hidden from standard sequencing-based approaches to preimplantation genetic testing (PGT-A). The ability to reliably distinguish meiotic and mitotic aneuploidies, as well as abnormalities in genome-wide ploidy may thus prove valuable for enhancing IVF outcomes. Here, we describe a statistical method for distinguishing these forms of aneuploidy based on analysis of low-coverage whole-genome sequencing data, which is the current standard in the field. Our approach overcomes the sparse nature of the data by leveraging allele frequencies and linkage disequilibrium (LD) measured in a population reference panel. The method, which we term LD-informed PGT-A (LD-PGTA), retains high accuracy down to coverage as low as 0.05x and at higher coverage can also distinguish between meiosis I and meiosis II errors based on signatures spanning the centromeres. LD-PGTA provides fundamental insight into the origins of human chromosome abnormalities, as well as a practical tool with the potential to improve genetic testing during IVF.
@@ -100,15 +101,18 @@ As described in our manuscript, LD-PGTA overcomes the sparse nature of low-cover
 
 ## Download VCF files from the 1000 Genome Project Phase 3 ##
 
-VCF files from the 1000 Genome Project Phase 3 aligned against GRCh38/hg38:
+VCF files from the [1000 Genome Project Phase 3 aligned against GRCh38/hg38](https://www.internationalgenome.org/data-portal/data-collection/30x-grch38):
 
-`wget 'ftp://ftp.sra.ebi.ac.uk/vol1/ERZ822/ERZ822766/*'`
+`wget 'http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20201028_3202_phased/*'`
 
-This call set is also available from: 
+A table with Pedigree information:
 
-[http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/release/20190312_biallelic_SNV_and_INDEL/](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/release/20190312_biallelic_SNV_and_INDEL/).
+[http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/1kGP.3202_samples.pedigree_info.txt](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/1kGP.3202_samples.pedigree_info.txt).
 
-Reference: [Variant calling on the GRCh38 assembly with the data from phase three of the 1000 Genomes Project](https://wellcomeopenresearch.org/articles/4-50/v2)
+**Since individuals in the reference panel are assumed to be unrelated, only sample IDs with a fatherID=0 and motherID=0 should be included. **
+
+Reference: [High coverage whole genome sequencing of the expanded 1000 Genomes Project cohort including 602 trios
+](https://www.biorxiv.org/content/10.1101/2021.02.06.430068v1)
 
 ## Generate list of individuals to include in the creation of the reference panel ##
 
@@ -249,6 +253,41 @@ We run the script with the following arguments and flags:
 
 where the first argument is the filename of a legend file, describing the SNPs. The second argument is the filename of the IMPUTE2 haplotypes file, which contains a table of haplotypes. The thirds argument is the filename of the IMPUTE2 samples file, which lists the individuals. The forth and fifth arguments are the chromosome ID and sample ID, respectively. 
 
+# Balanced ROC Analysis #
+<a name="ROC_analysis"/>
+
+Based on simulated scenario that was created by MIX_HAPLOIDS and analyzed by
+DETECT_CROSSOVERS, balanced ROC (Receiver Operating Characteristic) curves for predicting BPH (both parental
+homologs) and SPH (single parental homologs) are created.
+
+The balanced ROC curve is a plot of BTPR (Balanced True Positive Rate) vs. BFPR (Balanced False Positive Rate), where BTPR &#8801; 0.5(TPR<sub>BPH</sub> + TPR<sub>SPH</sub>) and BFPR &#8801; 0.5(FPR<sub>BPH</sub> + FPR<sub>SPH</sub>).
+
+The genome is divided into bins. For each simulated data, the mean LLR and the
+standard deviation for a bin are calculated. A positive (negative) prediction
+is made if the bounds of the confidence interval lie on the positive (negative)
+side of the number line. In each bin, the z-score is varied and the balanced
+positive and negative rates are calculated for each value it takes. 
+
+We run the script with the following arguments and flags:
+
+`python BALANCED_ROC_CURVE.py ~/results/non_masked/nonadmixed_EAS_chr16/ nonadmixed_EAS_chr16.p`
+
+where the first argument is the path of a directory that contains LLR files with simulated scenarios and the second argument is the output filename. In addition, the following optional arguments are supported:
+
+| Optional argument  | Description |
+| --- | --- |
+| `--number-of-bins` | _The genome is divided into bins and for each bin a ROC curve is calculated._ |
+| `--compress` | _Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed._ |
+| `--ancestral-makeup` | _Apply a criterion for the ancestral makeup: <br/> a. For non-admixtures the argument consists a single superpopulation, e.g., EUR. <br/> b. For recent admixtures the argument consists two superpopulations, e.g., EUR EAS. <br/> c. For distant admixtures the argument consists of the superpoplations and their proportions, e.g, EUR 0.8 EAS 0.1 SAS 0.1._ |
+| `--chr-id` | _Apply a criterion for the chromosome number, e.g., chrX._ |
+| `--window-size` | _Apply a criterion for the size of the genomic window._ |
+| `--subsamples` | _Apply a criterion for the number of subsamples per genomic window._ |
+| `--min-reads` | _Apply a criterion for the minimal number of reads per homolog, admitting non-zero score._ |
+| `--max-reads` | _Apply a criterion for the maximal number of sampled reads per homolog and per bootstrap iteration._ |
+| `--min-HF` | _Apply a criterion for the minimal haplotype frequency_ |
+| `--min-score` | _Apply a criterion for the minimal score of a read._ |
+| `--read-length` | _Apply a criterion for the number of base pairs in read._ |
+| `--depth` | _Apply a criterion for the depth of coverage per homolog._ |
 
 # Description of the IMPUTE2 format for reference panels #
 <a name="IMPUTE2"/>
@@ -355,6 +394,3 @@ Then, we convert from BCF to hap/legend/sample format used by IMPUTE2 and SHAPEI
 `rm chr21_EUR_panel.bcf`
 
 where `--haplegendsample prefix`  _converts from BCF to hap/legend/sample format used by IMPUTE2. The columns of the .legend file are ID,POS,REF,ALT. Moreover, in order to prevent strand swaps, the program uses IDs of the form "CHROM:POS_REF_ALT". The columns of the .sample file are population, group and sex._ 
-
-
-
