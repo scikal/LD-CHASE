@@ -156,16 +156,14 @@ def collect_data(criteria, num_of_bins, work_dir):
     """ Iterates over all the data files in the folder and creates a dictionary
     the list all the files that fit the criteria and gives their analysis
     (via the bucketing function). """
-
     import glob
     
     scenarios = criteria['scenarios']
     del criteria['scenarios']
     
-    filenamesA = glob.glob(work_dir + "simulated*LLR.p*")
-    filenamesB = glob.glob(work_dir + "simulated*LLR.p*")
+    filenames = glob.glob(work_dir.rstrip('/') +'/'+ "simulated*LLR.p*")
     result = {scenarios[0]: defaultdict(dict), scenarios[1]: defaultdict(dict)}
-    for filename in filenamesA+filenamesB:
+    for filename in filenames:
         try:
             likelihoods, info = load_likelihoods(filename)
             if likelihoods==None: continue
@@ -354,13 +352,13 @@ if __name__ == "__main__":
         HOME='????????'
         
     criteria = configuration('C1')
-    num_of_buckets = 30
-    work_dir = f'/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/non_masked/nonadmixed_EAS_chr16/'
-    output_dir = f'/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results'
+    number_of_bins = 45
+    work_dir = f'/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/LD-PGTA_analysis/recent_EAS_EUR_chr21/'
+    output_dir = f'/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/LD-PGTA_analysis/results'
+    output_filename = f"{output_dir.rstrip('/'):s}/PREDICTED_RATES_FOR_{criteria['scenarios'][0]:s}_vs_{criteria['scenarios'][1]:s}_{criteria['depth']['monosomy']:g}x_{number_of_bins:d}bins_{criteria['read_length']['monosomy']:d}bp.p"
     
-    output_filename = f"{output_dir.rstrip('/'):s}/PREDICTED_RATES_FOR_{criteria['scenarios'][0]:s}_vs_{criteria['scenarios'][1]:s}_{criteria['depth']['monosomy']:g}x_{num_of_buckets:d}bins_{criteria['read_length']['monosomy']:d}bp.p"
-    N, R = main(criteria,num_of_buckets,work_dir,output_filename)
-    
+    N, R = BALANCED_ROC_CURVE.main(work_dir,output_dir+output_filename,number_of_bins,criteria,compress='unc')
+
     
 else:
     print("The module ROC_curve was imported.")
