@@ -164,27 +164,31 @@ where the first argument is the filename of the BAM file, containing reads mappe
 # Stage 4: Model comparison with log likelihood ratios #
 <a name="aneuploidy_test"/>
 
-The script `ANEUPLOIDY_TEST.py` builds a dictionary that lists linkage disequilibrium (LD) blocks that contain at least two meaningful reads and gives the associated log-likelihood BPH/SPH ratio (LLR). BPH (Both Parental Homologs) describes to the presence of three unmatched haplotypes, while SPH (Single Parental Homolog) describes the presence of two identical haplotypes, with an additional unmatched haplotype. Finally, the script analyzes the dictionary and reports summary statistics, including the mean LLR, the standard error, the number of informative genomic windows and the fraction of genomic windows with a negative LLR.
+The script `DETECT_CROSSOVERS.py` builds a dictionary that lists linkage disequilibrium (LD) blocks that contain at least two meaningful reads and gives the associated log-likelihood BPH/SPH ratio (LLR). BPH (Both Parental Homologs) describes to the presence of three unmatched haplotypes, while SPH (Single Parental Homolog) describes the presence of two identical haplotypes, with an additional unmatched haplotype. Finally, the script analyzes the dictionary and reports summary statistics, including the mean LLR, the standard error, the number of informative genomic windows and the fraction of genomic windows with a negative LLR.
 
 As demonstration, we run the script with the following arguments and flags:
 
-`python3 ANEUPLOIDY_TEST.py SRR6676163.obs.p EUR_panel.chr21.legend EUR_panel.chr21.hap EUR_panel.chr21.sam --window-size 0 --min-reads 6 --max-reads 4 --compress bz2`,
+`python DETECT_CROSSOVERS.py  simulated.disomy.chr16.x0.100.NA12889A.HG00448A.obs.p.bz2 simulated.monosomy.chr16.x0.050.NA18644A.obs.p.bz2 chr16_EAS_EUR_panel.legend.gz chr16_EAS_EUR_panel.hap.gz EAS_EUR_panel.samples.gz EAS 0.7 EUR 0.3 --window-size 0 --min-reads 12 --max-reads 6 --compress bz2`,
 
-where the first argument is the filename of a pickle file created by MAKE_OBS_TAB, containing base observations at known SNP positions. The second argument is the filename of the IMPUTE2 legend file, which lists the SNPs in our reference panel. The third required argument is the filename of the IMPUTE2 haplotype file, which lists the haplotypes in our reference panel. The forth required argument is the filename of the IMPUTE2 samples file, which describes the ancestral group of the individuals. In addition, the following flags are supported:
+where the first and second argument are filenames of observation tables for disomy and monosomy, respectively. The observation tables are created by MAKE_OBS_TAB and contain base observations at known SNP positions. The third argument is the filename of the reference panel legend, which lists the SNPs in our reference panel. The forth required argument is the filename of the reference panel haplotypes, which lists the haplotypes in our reference panel. The fifth required argument is the filename of the reference panel samples, which describes the ancestral group of the individuals consisting the reference panel. The rest of the non-optional arguments describe the ancestral makeup of the disomy. In general, the ancestral makeup is specified as follows:
+1. For non-admixtures the argument consists a single superpopulation, e.g., `EUR`.
+2. For recent admixtures the argument consists two superpopulations, e.g., `EUR EAS`.
+3. For distant admixtures the argument consists of the superpoplations and their proportions, e.g, `EUR 0.8 EAS 0.1 SAS 0.1`.
+
+In addition, the following optional arguments are supported:
 
 | Optional argument  | Description |
 | --- | --- |
-|`--ancestral-makeup <STR> <FLOAT> ...` | _Assume a distant admixture with a certain ancestry proportion, e.g, EUR 0.8 EAS 0.1 SAS 0.1._ |
 | `--window-size <INT>` | _Specifies the size of the genomic window. The default value is 100 kbp. When given a zero-size genomic window, it adjusts the size of the window to include min-reads reads._ |
 | `--offset <INT>` | _Shifts all the genomic windows by the requested base pairs. The default value is 0._
-| `--min-reads <INT>` | _Takes into account only genomic windows with at least INT reads, admitting non-zero score. The minimal value is 3, while the default is 6._ |
-| `--max-reads <INT>` | _Selects up to INT reads from each genomic windows in each bootstrap sampling. The minimal value is 2, while the default value is 4._ |
-| `--min-HF <INT>`  | _Only haplotypes with a frequnecy between FLOAT and 1-FLOAT add to the score of a read. The default value is 0.05._ |
+| `--min-reads <INT>` | _Takes into account only genomic windows with at least INT reads per homolog, admitting non-zero score. The minimal value is 3, while the default is 6._ |
+| `--max-reads <INT>` | _Selects up to INT reads per homolog from each genomic windows in each bootstrap sampling. The minimal value is 2, while the default value is 4._ |
+| `--min-HF <FLOAT>`  | _Only haplotypes with a frequnecy between FLOAT and 1-FLOAT add to the score of a read. The default value is 0.05._ |
 | `--min-score <INT>` | _Consider only reads that reach the minimal score. The default value is 2._ |
 | `--output-filename <FILENAME>` | _The output filename. The default is the input filename with the extension ".obs.p" replaced by ".LLR.p"._ |
 |`--compress gz/bz2/unc` | _Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed._ |
 
-* The presence of the Python module gmpy2 accelerates performance of this script. gmpy2 is an implementation of a standard GMP (GNU Multiple Precision Arithmetic Library) and supports arbitrary precision integers. For more information check [ gmpy2 ](https://pypi.org/project/gmpy2/) and also [gmpy2’s documentation](https://gmpy2.readthedocs.io/).
+* When the python module `gmpy2` is present, the script would use its implementation of `popcount` to boost performance. `gmpy2` is an implementation of a standard GMP (GNU Multiple Precision Arithmetic Library) and supports arbitrary precision integers. For more information check [ gmpy2 ](https://pypi.org/project/gmpy2/) and also [gmpy2’s documentation](https://gmpy2.readthedocs.io/).
 
 # Stage 5: Plot log-likelihood ratios vs. chromosomal position. #
 <a name="plot_llr"/>
