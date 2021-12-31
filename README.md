@@ -1,3 +1,3 @@
 **Contrast-Crossovers**
 
-Haplotype-aware inference of human chromosome crossovers
+A tools Haplotype-aware inference of human chromosome crossovers.
