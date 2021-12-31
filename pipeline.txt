@@ -1,7 +1,7 @@
 ## Table of Contents  
 
 #### Introduction
-[What is CONTRAST-CROSSOVERS?](#background)
+[What is Contrast-Crossovers?](#background)
 
 #### Tutorial
 [Stage 1: Sequence alignment](#seq_alignment) \
@@ -394,6 +394,3 @@ Then, we convert from BCF to hap/legend/sample format used by IMPUTE2 and SHAPEI
 `rm chr21_EUR_panel.bcf`
 
 where `--haplegendsample prefix`  _converts from BCF to hap/legend/sample format used by IMPUTE2. The columns of the .legend file are ID,POS,REF,ALT. Moreover, in order to prevent strand swaps, the program uses IDs of the form "CHROM:POS_REF_ALT". The columns of the .sample file are population, group and sex._ 
-
-
-
