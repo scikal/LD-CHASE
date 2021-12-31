@@ -255,9 +255,9 @@ def effective_number_of_subsamples(num_of_reads,min_reads,max_reads,subsamples):
 
     return eff_subsamples
 
-def bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab, sam_tab, number_of_haplotypes,
-              models_dict, window_size, subsamples, offset, min_reads,
-              max_reads, min_score, min_HF, ancestral_makeup):
+def bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab, sam_tab,
+              number_of_haplotypes, ancestral_makeup, models_dict, window_size,
+              subsamples, offset, min_reads, max_reads, min_score, min_HF):
     """ Applies a bootstrap approach in which: (i) the resample size is smaller
     than the sample size and (ii) resampling is done without replacement. """
 
@@ -267,17 +267,17 @@ def bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab, sam_tab, numbe
     monosomy = supporting_dictionaries(monosomy_obs_tab, leg_tab, hap_tab, number_of_haplotypes, min_HF)     
     gw_disomy, gw_monosomy = build_gw_dict(disomy, monosomy, window_size, offset, min_reads, max_reads, min_score)
     
-    groups_in_ref_panel = {i.group2 for i in sam_tab}
-    if ancestral_makeup=={} and len(groups_in_ref_panel)==1:
-        print('Assuming one ancestral population: %s.' % sam_tab[0].group2)
+    if type(ancestral_makeup)==set and len(ancestral_makeup)==1:
+        print('Assuming one ancestral population: %s.' % next(iter(ancestral_makeup)))
         examine = homogeneous(disomy_obs_tab + monosomy_obs_tab, leg_tab, hap_tab, sam_tab, models_dict, number_of_haplotypes)
-    elif ancestral_makeup=={} and len(groups_in_ref_panel)==2:
-        print('Assuming recent-admixture between %s and %s.' % tuple(groups_in_ref_panel))
+    elif type(ancestral_makeup)==set and len(ancestral_makeup)==2:
+        print('Assuming recent-admixture between %s and %s.' % tuple(ancestral_makeup))
         examine = recent_admixture(disomy_obs_tab + monosomy_obs_tab, leg_tab, hap_tab, sam_tab, models_dict, number_of_haplotypes)
-    else:    
-        print('Assuming the following ancestral makeup:', ancestral_makeup)    
+    elif type(ancestral_makeup)==dict:
+        print('Assuming the following ancestral makeup:', ", ".join("{:.1f}% {}".format(100*v, k) for k, v in ancestral_makeup.items()))    
         examine = distant_admixture(disomy_obs_tab + monosomy_obs_tab, leg_tab, hap_tab, sam_tab, models_dict, number_of_haplotypes, ancestral_makeup)
-
+    else:
+        raise Exception('error: unsupported ancestral-makeup.')
 
     likelihoods = {}
 
@@ -387,9 +387,10 @@ def save_results(likelihoods,info,compress,obs_filename,output_filename,output_d
         pickle.dump(info, f, protocol=4)
     return output_dir + output_filename
 
-def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,hap_filename,samp_filename,
-                    window_size,subsamples,offset,min_reads,max_reads,
-                    min_score,min_HF,output_filename,compress,**kwargs):
+def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,
+                        hap_filename,samp_filename,ancestral_makeup,
+                        window_size,subsamples,offset,min_reads,max_reads,
+                        min_score,min_HF,output_filename,compress,**kwargs):
     """ Returns a dictionary that lists the boundaries of approximately
     independent genomic windows. For each genomic window it gives the
     likelihood of four scenarios, namely, monosomy, disomy, SPH and BPH.
@@ -400,8 +401,6 @@ def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,h
     random.seed(a=kwargs.get('seed', None), version=2) #I should make sure that a=None after finishing to debug the code.
     path = os.path.realpath(__file__).rsplit('/', 1)[0] + '/MODELS/'
     models_filename = kwargs.get('model', path + 'MODELS16.p')
-    
-    ancestral_makeup = kwargs.get('ancestral_makeup',{})
      
     load = lambda filename: {'bz2': bz2.open, 'gz': gzip.open}.get(filename.rsplit('.',1)[1], open)  #Adjusts the opening method according to the file extension.
 
@@ -433,31 +432,29 @@ def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,h
         models_dict = pickle.load(model_in)
     
     assert monosomy_info['chr_id']==disomy_info['chr_id'] , "error: the chr_id in the observations tables does not match."
-
     
-    info = {'chr_id': disomy_info['chr_id'],
-            'depth': {'monosomy': monosomy_info['depth'], 'disomy': disomy_info['depth']},
-            'read_length': {'monosomy': monosomy_info['read_length'], 'disomy': disomy_info['read_length']},
-            'disomy_obs_filename': disomy_obs_filename,
-            'monosomy_obs_filename': monosomy_obs_filename,}
+    ancestry = set(ancestral_makeup.keys()) if type(ancestral_makeup)==dict else set(ancestral_makeup)
+    assert ancestry=={row.group2 for row in sam_tab}, 'error: the given ancestral makup does match the populations (group2) in the reference panel.'
     
-    likelihoods, windows_dict, matched_alleles = bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab, sam_tab, number_of_haplotypes, models_dict, window_size, subsamples, offset, min_reads, max_reads, min_score, min_HF, ancestral_makeup)
+    likelihoods, windows_dict, matched_alleles = bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab, sam_tab, number_of_haplotypes, ancestral_makeup, models_dict, window_size, subsamples, offset, min_reads, max_reads, min_score, min_HF)
 
     some_statistics = {'matched_alleles': matched_alleles,
                        'runtime': time.time()-time0}
 
-    ancestry = {row.group2 for row in sam_tab} if ancestral_makeup=={} else ancestral_makeup
-
-    info.update({'ancestry': ancestry,
-                 'window_size': window_size,
-                 'subsamples': subsamples,
-                 'offset': offset,
-                 'min_reads': min_reads,
-                 'max_reads': max_reads,
-                 'min_score': min_score,
-                 'min_HF': min_HF,    
-                 'statistics': {**statistics(likelihoods,windows_dict), **some_statistics}
-                 })
+    info = {'chr_id': disomy_info['chr_id'],
+            'depth': {'monosomy': monosomy_info['depth'], 'disomy': disomy_info['depth']},
+            'read_length': {'monosomy': monosomy_info['read_length'], 'disomy': disomy_info['read_length']},
+            'disomy_obs_filename': disomy_obs_filename,
+            'monosomy_obs_filename': monosomy_obs_filename,
+            'ancestry': ancestry,
+            'window_size': window_size,
+            'subsamples': subsamples,
+            'offset': offset,
+            'min_reads': min_reads,
+            'max_reads': max_reads,
+            'min_score': min_score,
+            'min_HF': min_HF,    
+            'statistics': {**statistics(likelihoods,windows_dict), **some_statistics}}
     
     if output_filename!=None:
         save_results(likelihoods,info,compress,disomy_obs_filename,output_filename,kwargs.get('output_dir', 'results'))
@@ -478,17 +475,20 @@ if __name__ == "__main__":
                 '(Single Parental Homolog) correspond to chromosome gains'
                 'involving identical homologs.')
     parser.add_argument('disomy_obs_filename', metavar='DISOMY_OBS_FILENAME', type=str,
-                        help='A observations file created by MAKE_OBS_TAB.')
-    parser.add_argument('monosomy_obs_filename', metavar='MONOSMY_OBS_FILENAME', type=str,
-                        help='A observations file created by MAKE_OBS_TAB.')
+                        help='A observations file created by MAKE_OBS_TAB for a disomy.')
+    parser.add_argument('monosomy_obs_filename', metavar='MONOSOMY_OBS_FILENAME', type=str,
+                        help='A observations file created by MAKE_OBS_TAB for a monosomy.')
     parser.add_argument('leg_filename', metavar='LEG_FILENAME', type=str,
                         help='A legend file of the reference panel.')
     parser.add_argument('hap_filename', metavar='HAP_FILENAME', type=str,
                         help='A haplotype file of the reference panel.')
     parser.add_argument('samp_filename', metavar='SAMP_FILENAME', type=str,
                         help='A samples file of the reference panel.')
-    parser.add_argument('-a', '--ancestral-makeup', metavar='STR FLOAT ...', nargs='+', default=[],
-                        help='Assume an ancestral makeup with a certain proportions, e.g, EUR 0.8 EAS 0.1 SAS 0.1. When two populations are reported in the sample file and the ancestral makeup is not specified then the recent-admixture algorithm would be applied.')
+    parser.add_argument('ancestral_makeup', metavar='ANCESTRAL_MAKEUP', nargs='+',
+                        help='Assume an ancestral makeup:\n'
+                        'a. For non-admixtures the argument consists a single superpopulation, e.g., EUR. \n'
+                        'b. For recent admixtures the argument consists two superpopulations, e.g., EUR EAS. \n'
+                        'c. For distant admixtures the argument consists of the superpoplations and their proportions, e.g, EUR 0.8 EAS 0.1 SAS 0.1.\n')
     parser.add_argument('-w', '--window-size', type=int,
                         metavar='INT', default='100000',
                         help='Specifies the size of the genomic window. The default value is 100 kbp. When given a zero-size genomic window, it adjusts the size of the window to include min-reads reads.')
@@ -511,8 +511,15 @@ if __name__ == "__main__":
                         help='Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed.')
     args = vars(parser.parse_args())
 
-
-    args['ancestral_makeup'] = dict(zip(args['ancestral_makeup'][0::2],map(float,args['ancestral_makeup'][1::2])))
+    strings_even = all(i.isalpha() for i in args['ancestral_makeup'][0::2])
+    strings_odd = all(i.isalpha() for i in args['ancestral_makeup'][1::2])
+    floats_odd = all(i.replace('.','',1).isdigit() for i in args['ancestral_makeup'][1::2])
+    if strings_even and strings_odd and len(args['ancestral_makeup']) in (1,2):
+        args['ancestral_makeup'] = set(args['ancestral_makeup'])
+    elif strings_even and floats_odd:
+        args['ancestral_makeup'] = dict(zip(args['ancestral_makeup'][0::2],map(float,args['ancestral_makeup'][1::2])))
+    else:
+        raise Exception('error: Invalid argument supplied for ancestral makeup.')
 
     LLR_dict, info = contrast_crossovers(**args)
 

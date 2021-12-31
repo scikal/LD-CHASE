@@ -61,24 +61,9 @@ def runInParallel(*fns,**kwargs):
         except:
             None
 
-def transitions(chr_id):
-    """ Generates transitions between BPH to SPH regions for trisomy of meiosis II origin. """
-    x = int(chr_id[3:]) if chr_id[3:].isnumeric() else chr_id[3:]
-    if type(x) is int and 1<=x<=6:
-        #BPH-SPH-BPH-SPH
-        result = ('BPH',random.uniform(0,.25),random.uniform(.5,.75),random.uniform(.75,1))
-    elif type(x) is int and 7<=x<=12:
-        #BPH-SPH-BPH
-        result = ('BPH',random.uniform(0,.333),random.uniform(.666,1))
-    elif x=='X' or (type(x) is int and 13<=x<=22):
-        #SPH-BPH
-        result = ('SPH',random.uniform(.5,1))
-    else:
-        result = ('SPH',1)
-    return (result,)
-
-def contrast_crossovers_wrapper(disomy_obs_filename,monosomy_obs_filename,chr_id,sp,ancestral_makeup,model,min_reads,max_reads,output_dir,ref_dir,output_filename):
+def contrast_crossovers_wrapper(disomy_obs_filename,monosomy_obs_filename,ancestral_makeup,chr_id,model,min_reads,max_reads,output_dir,ref_dir,output_filename):
     from DETECT_CROSSOVERS import contrast_crossovers
+    sp = '_'.join(sorted(ancestral_makeup))
     args = dict(disomy_obs_filename = disomy_obs_filename,
                 monosomy_obs_filename = monosomy_obs_filename,
                 hap_filename = ref_path + f'{sp:s}_panel/{chr_id:s}_{sp:s}_panel.hap.gz',
@@ -109,120 +94,136 @@ def simulate_haploids(sample_id,sp,chr_id,genotypes,output_dir):
     sam_filename = ref_path + f'{sp:s}_panel/{sp:s}_panel.samples.gz'
     return extract(leg_filename,hap_filename,sam_filename,chr_id,sample_id,genotypes=genotypes,output_dir=output_dir)
 
-def sample_indv(sp):    
+def sample_indv(ancestral_makeup):    
     seed(None, version=2)
-    list_SP = sp.split('_')
-    if len(list_SP)==1:
-        INDIVIDUALS = read_ref(ref_path + f"samples_per_panel/{sp:s}_panel.txt") 
-        A = sample(INDIVIDUALS,k=3)
-        B = choices(['A','B'],k=3)
     
-    elif len(list_SP)==2 and admixture_proportions==[]:
-        B = choices(['A','B'],k=3)
+    if len(ancestral_makeup)==1:
+        sp = next(iter(ancestral_makeup))
+        INDIVIDUALS = read_ref(ref_path + f"samples_per_panel/{sp:s}_panel.txt") 
+        A = sample(INDIVIDUALS,k=2)
+        B = choices(['A','B'],k=2)
+    
+    elif len(ancestral_makeup)==2 and type(ancestral_makeup)==set:
+        B = choices(['A','B'],k=2)
         A = []
-        for i,p in enumerate(random.sample(list_SP, len(list_SP)),start=1): #Sampling without replacement.
-            INDIVIDUALS = read_ref(ref_path + f"samples_per_panel/{p:s}_panel.txt") 
+        for i,sp in enumerate(random.sample(tuple(ancestral_makeup), len(ancestral_makeup)),start=1): #Sampling without replacement.
+            INDIVIDUALS = read_ref(ref_path + f"samples_per_panel/{sp:s}_panel.txt") 
             A.extend(sample(INDIVIDUALS,k=i))
     
-    elif len(list_SP)==2 and len(admixture_proportions)==2:
-        B = choices(['A','B'],k=6)
-        A = []
-        for p in list_SP:
-            INDIVIDUALS = read_ref(ref_path + f"samples_per_panel/{p:s}_panel.txt") 
-            A.extend(sample(INDIVIDUALS,k=3))
-        A = operator.itemgetter(0,3,1,4,2,5)(A)
-    
     else:
-        print('error: unsupported sp value.')
+        raise Exception('error: unsupported sp value.')
 
     C = [i+j for i,j in zip(A,B)]
     return A,B,C 
 
 
-def main(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions=[],mismatch=False):
-    work_dir = work_dir.rstrip('/') + '/' if len(work_dir)!=0 else ''
-    SPsorted = {('EUR_EAS'): 'EAS_EUR', ('EAS_EUR'): 'EAS_EUR', ('EUR_SAS'): 'SAS_EUR', ('SAS_EUR'): 'SAS_EUR', ('EAS_SAS'): 'EAS_SAS', ('SAS_EAS'): 'EAS_SAS', ('AFR_EUR'): 'AFR_EUR', ('EUR_AFR'): 'AFR_EUR', 'EUR': 'EUR', 'EAS': 'EAS', 'SAS': 'SAS', 'AMR': 'AMR', 'AFR': 'AFR'}
+def main(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir):
+    print(ancestral_makeup)
     
-    A,B,C = sample_indv(sp)
+    work_dir = work_dir.rstrip('/') + '/' if len(work_dir)!=0 else ''
+    
+    A,B,C = sample_indv(ancestral_makeup)
     
     print('Simulating effective haploids:')    
-    for a,b in zip(A,B): 
-        print(a+b)
-        simulate_haploids(a, SPsorted[sp], chr_id, b, work_dir)
+    
+    sp = '_'.join(sorted(ancestral_makeup))
+    
+    for indv,genotype in zip(A,B): 
+        print(indv+genotype)
+        simulate_haploids(indv, sp, chr_id, genotype, work_dir)
+    
     sim_obs_tabs = [f'{work_dir:s}{c:s}.{chr_id:s}.hg38.obs.p' for c in C]
-    fns = MixHaploids_wrapper(*sim_obs_tabs[:2], read_length=read_length, depth=depth, scenarios=('disomy','monosomy'),
-                                    transitions=transitions(chr_id), compress='bz2', output_dir=work_dir, 
-                                    distant_admixture=admixture_proportions)
+    
+    fns = MixHaploids_wrapper(*sim_obs_tabs, read_length=read_length, depth=depth, scenarios=('disomy','monosomy'),
+                              compress='bz2', output_dir=work_dir)
     
     fns += MixHaploids_wrapper(sim_obs_tabs[2], read_length=read_length, depth=depth, scenarios=('monosomy',),
-                                    transitions=transitions(chr_id), compress='bz2', output_dir=work_dir, 
-                                    distant_admixture=admixture_proportions)
-    
+                               compress='bz2', output_dir=work_dir)
     
     disomy_obs_filename, monosomy0_obs_filename, monosomy1_obs_filename = fns
-        
+            
     print(disomy_obs_filename)
     print(monosomy0_obs_filename)
     print(monosomy1_obs_filename)
     
-    if mismatch:
-        effective_SP = choice(sp.split('_'))
-        ancestral_makeup = {}
-    else:
-        effective_SP = SPsorted[sp] 
-        ancestral_makeup = dict(zip(sp.split('_'),admixture_proportions))
-        
-    #print(effective_SP)
-    print(ancestral_makeup)
-
     output_filename0 = f'simulated.SPH.{C[0]:s}.{C[1]:s}.{chr_id:s}.LLR.p'
     output_filename1 = f'simulated.BPH.{C[0]:s}.{C[1]:s}.{C[2]:s}.{chr_id:s}.LLR.p'    
     
-    contrast_crossovers_wrapper(disomy_obs_filename,monosomy0_obs_filename,chr_id,effective_SP,ancestral_makeup,None,min_reads,max_reads,work_dir,ref_path,output_filename0)
-    contrast_crossovers_wrapper(disomy_obs_filename,monosomy1_obs_filename,chr_id,effective_SP,ancestral_makeup,None,min_reads,max_reads,work_dir,ref_path,output_filename1)
+    contrast_crossovers_wrapper(disomy_obs_filename,monosomy0_obs_filename,ancestral_makeup,chr_id,None,min_reads,max_reads,work_dir,ref_path,output_filename0)
+    contrast_crossovers_wrapper(disomy_obs_filename,monosomy1_obs_filename,ancestral_makeup,chr_id,None,min_reads,max_reads,work_dir,ref_path,output_filename1)
+    
     for c in C: os.remove(f'{work_dir:s}{c:s}.{chr_id:s}.hg38.obs.p')
+
     return 0
 
 
 if __name__ == "__main__":
     random.seed(a=None, version=2)
-    admixture_proportions=[] #[0.5,0.5]
+    #admixture_proportions=[] #[0.5,0.5]
     depth=0.05
-    sp='EUR' #'EUR_EAS'
+    
+    mismatch = False #Partial mismatch of reference panel for admixtures.
     chr_id='chr16'
     read_length = 75
     min_reads,max_reads = 12,6
-    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_EUR_chr16"
-    mismatch = False #Partial mismatch of reference panel for admixtures.
-    ###main(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch)
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
+    ancestral_makeup={'EUR'} #'EUR_EAS'
+    
+    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_{'_'.join(sorted(ancestral_makeup)):s}_{chr_id:s}"
+
+    ###main(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir)
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
     
     
-    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_EAS_chr16"
-    sp='EAS'
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
+    ancestral_makeup={'EAS'}
+    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_{'_'.join(sorted(ancestral_makeup)):s}_{chr_id:s}"
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
     
-    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_SAS_chr16"
-    sp='SAS'
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
+    ancestral_makeup={'SAS'}
+    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_{'_'.join(sorted(ancestral_makeup)):s}_{chr_id:s}"
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
     
-    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_AMR_chr16"
-    sp='AMR'
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
+    ancestral_makeup={'AMR'}
+    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_{'_'.join(sorted(ancestral_makeup)):s}_{chr_id:s}"
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
     
-    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_AFR_chr16"
-    sp='AFR'
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
-    runInParallel(*([main]*32),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir,admixture_proportions, mismatch) )
+    ancestral_makeup={'AFR'}
+    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_{'_'.join(sorted(ancestral_makeup)):s}_{chr_id:s}"
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    
+    ancestral_makeup={'EAS_EUR'}
+    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_{'_'.join(sorted(ancestral_makeup)):s}_{chr_id:s}"
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    
+    ancestral_makeup={'SAS_EUR'}
+    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_{'_'.join(sorted(ancestral_makeup)):s}_{chr_id:s}"
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    
+    ancestral_makeup={'AFR_EUR'}
+    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_{'_'.join(sorted(ancestral_makeup)):s}_{chr_id:s}"
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    
+    ancestral_makeup={'EAS_SAS'}
+    work_dir = f"/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CONTRAST-CROSSOVERS/results/nonadmixed_{'_'.join(sorted(ancestral_makeup)):s}_{chr_id:s}"
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    runInParallel(*([main]*32),args=(ancestral_makeup,depth,chr_id,read_length,min_reads,max_reads,work_dir) )
+    
     #for n in [*range(22,0,-1),'X']:
         #chr_id = 'chr' + str(n)
     #    runInParallel(*([main]*12),args=(depth,sp,chr_id,read_length,min_reads,max_reads,work_dir) )
