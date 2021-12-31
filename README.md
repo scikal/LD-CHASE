@@ -1,3 +1,3 @@
-**Haplotype-aware inference of human chromosome crossovers**
+**Contrast-Crossovers **
 
-TBA
+Haplotype-aware inference of human chromosome crossovers
