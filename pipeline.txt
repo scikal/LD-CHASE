@@ -11,7 +11,7 @@
 [Stage 5: Plot log-likelihood ratio vs. chromosomal position](#plot_llr)
 
 #### Additional documentation
-[Simulating various forms of trisomy](#simulate) \
+[Simulating sequences of disomy and monosomy](#simulate) \
 [Balanced ROC analysis](#ROC_analysis) \
 [Description of the IMPUTE2 format for reference panels](#IMPUTE2) \
 [Generating IMPUTE2 reference panels from a VCF file](#"VCF2IMPUTE")
@@ -118,7 +118,7 @@ Create an IMPUTE2 SAMPLE file, as explained in this [section](#IMPUTE2). In orde
 
 ## Generate a reference panel ##
 
-The script `MAKE_REF_PANEL.py` creates reference panels for Contrast-Crossovers, using phased genotypes in VCF files. The reference panels of Contrast-Crossovers follow the structure of the IMPUTE2 format, but are encoded as binary files for efficient storage and retrieval.
+The script `MAKE_REF_PANEL.py` creates reference panels for Contrast-Crossovers, using phased genotypes in VCF files. A reference panel of Contrast-Crossovers follows the structure of the IMPUTE2 format and consist of three files: samples, legend and haplotypes. However,the reference panel is stored as binary files for efficient storage and retrieval.
 
 We run the script with the following arguments and flags:
 
@@ -133,17 +133,18 @@ In addition, the following flags are supported:
 | `--output-directory <PATH>` | _The directory in which the reference panel would be created._ |
 | `--force-module cyvcf2/bcftools/pysam`| _By deafult cyvcf2 module would be used. This allows to use pysam or bcftools instead._ |
 
+
 # Stage 3: Tabulation of allele observations at known SNPs #
 <a name="obs_tab"/>
 
-The script `MAKE_OBS_TAB.py` uses a BAM file, which is aligned and sorted, as well as an IMPUTE2 legend file.
-It then builds a nested list that contains observed alleles at SNPs positions together with their chromosome position and line number in the legend file. The nested list is stored in a pickle format.
+The script `MAKE_OBS_TAB.py` uses a BAM file, which is aligned and sorted, as well as a legend file.
+It then builds a nested list that contains observed alleles at SNPs positions together with their chromosome position and the associated read ID. The nested list is stored in a pickle format.
 
 We run the script with the following arguments and flags:
 
 `python3 MAKE_OBS_TAB.py SRR6676163.bam EUR_panel.chr21.legend --min-bq 30 --min-mq 30 --max-depth 0 --handle-multiple-observations all`,
 
-where the first argument is the filename of the BAM file, containing reads mapped to a reference sequence. The second required argument is the filename of the IMPUTE2 legend file, which lists the SNPs positions. In addition, the following flags are supported:
+where the first argument is the filename of the BAM file, containing reads mapped to a reference sequence. The second required argument is the filename of the legend file, which lists the SNPs positions. In addition, the following flags are supported:
 
 | Optional argument  | Description |
 | --- | --- |
@@ -203,35 +204,41 @@ aneuploidy landscapes.  In addition, the following flags are supported:
 | `--pairs` | _Plots the LLR between scenario A and scenario B along the chromosome. The possible pairs are: BPH,DISOMY; DISOMY,SPH; SPH,MONOSOMY; DISOMY,MONOSOMY; BPH,SPH. In addition, giving a list of pairs would plot the LLR of each pair in the same figure, e.g. "BPH,SPH SPH,MONOSOMY". The default value is BPH,SPH._ |
 | `--bins` | _The numbers of bins the chromosome is divided into. The default value is 10._ |
 
-# Simulating various forms of trisomy #
+# Simulating sequences of disomy and monosomy #
 <a name="simulate"/>
 
-To further demonstrate and evaluate LD-PGTA and other methods, it can be useful to simulate trisomies (as well as other ploidy configurations) with various haplotype patterns. This can be accomplished by drawing haplotypes from a reference panel such as the 1000 Genomes Project, and mixing them in defined proportions.
+To further demonstrate and evaluate Contrast-Crossovers and other methods, it can be useful to simulate disomies and monosomies with various ancestral makeup. This can be accomplished by drawing haplotypes from a reference panel such as the 1000 Genomes Project, and mixing them in defined proportions.
 
 ## Creating mixtures of haploid sequences ##
 
-The script MIX_HAPLOIDS.py simulates observed bases at known SNP positions from an aneuploid cell, based on mixtures of haploid sequences. The simulation supports various aneuploidy configurations:
-1. Monosomy - a single copy of a chromosome.
-2. Disomy - two unmatched haplotypes.
-3. SPH (`single parental homolog') - trisomy with two identical haplotypes and one unique haplotype.
-4. BPH (`both parental homologs') - trisomy with three distinct haplotypes.
-5. Realistic meiotic-origin trisomy with recombination, characterized by a transitions between SPH to BPH tracts.
+    parser.add_argument('-c', '--compress', metavar='gz/bz2/unc', type=str, default='unc',  choices=['gz','bz2','unc'],
+                        help='Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed.')
+    parser.add_argument('-a', '--distant-admixture', metavar='FLOAT FLOAT', nargs='+', default=[],
+                        help='Assume a distant admixture with a certain ancestry proportion, e.g, AFR 0.8 EUR 0.2. '
+                             'In addition, the order of observation tables that are given as arguments is important; '
+                             'Odd positions are associated with population 1, while even positions with population 2. '
+                             'For example, in order to simulate a monosomy case the observation tables should be given '
+                             'as follows: \"python MIX_HAPLOIDS -s monosomy HAPLOID1_AFR.obs.p HAPLOID2_EUR.obs.p\". ')
 
+The script MIX_HAPLOIDS.py simulates an observation table of disomy and monosomy, based on mixtures of haploid sequences. 
 We demonstrate the script with the following arguments and flags:
 
-`python3 MIX_HAPLOIDS.py HAPLOID1.obs.p HAPLOID2.obs.p HAPLOID3.obs.p --depth 0.01 --read-length 36 --scenarios monosomy,SPH,disomy,BPH`,
+`python3 MIX_HAPLOIDS.py HAPLOID1.obs.p HAPLOID2.obs.p HAPLOID3.obs.p --depth 0.05 --read-length 75 --scenarios monosomy disomy`,
 
-where the three first arguments are the filenames of observation tables created by MAKE_OBS_TAB for each haploid sequence. In addition, some of the following optional flags were used:
+where the three first arguments are the filenames of observation tables created by MAKE_OBS_TAB for each haploid sequence. In addition, some of the following optional arguments were used:
 
 | Optional argument  | Description |
 | --- | --- |
-| `--depth <FLOAT>` | _The average coverage for the whole chromosome.  Default value 0.1_ |
+| `--depth <FLOAT>` | _The average coverage per homolog (the coverage for disomy is twice the given value). Default value 0.1_ |
 | `--read-length <INT>` | _The number of base pairs (bp) sequenced from a DNA fragment. Default value 36._ |
-| `--scenarios <LIST OF STRINGS>` | _The simulation supports five scenarios: monosomy/disomy/SPH/BPH/transitions. Default scenario is disomy. Giving a list of scenarios, e.g. \"SPH BPH\" would create a batch of simulations._ |
-| `--output-filename <FILENAME>` | _The output filename. The default filename is a combination of three obs filenames._ |
+| `--scenarios <STR>` | _The simulation supports two scenarios disomy and monosomy. Default scenario is disomy. Giving a both scenarios, e.g. "disomy monosomy" would create a batch of simulations. In batch mode, the first observation table would be used to simulate monosomy._ |
+| `--output-filename <FILENAME>` | _Output filename. The default filename includes all the sample IDs associated with the given observation tables._ |
 | `--compress <gz/bz2/unc>` | _Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed._ |
-| `--transitions <STR,FLOAT,FLOAT,...,FLOAT,>` | _Relevant only for transitions scenario. Introduces transitions between SPH and BPH along the chromosome. The locations of the transition is determined by a fraction of chromosome length, ranging between 0 to 1. For example a BPH-SPH-BPH transition that equally divides the chromosomes is exressed as BPH,0.333,0.666 and, similarly, a SPH-BPH transition at the middle of the chromosome is expressed as SPH,0.5. In addition, giving a list of cases, e.g. \"SPH,0.2 SPH,0.4 SPH,0.6\" would create a batch of three simulations._ |
-|`--distant-admixture <FLOAT FLOAT>` | _Assume a distant admixture with a certain ancestry proportion, e.g, AFR 0.8 EUR 0.2. In addition, the order of observation tables that are given as arguments is important; Odd positions are associated with population 1, while even positions with population 2. For example, in order to simulate a SPH case the observation tables should be given as follows: \"python MIX_HAPLOIDS -s SPH HAPLOID1_AFR.obs.p HAPLOID2_EUR.obs.p HAPLOID3_AFR.obs.p HAPLOID4_EUR.obs.p\". When simulating SPH, the first two observation tables would be associated with the duplicated homolog._ |
+|`--distant-admixture <FLOAT FLOAT>` | _Assume a distant admixture with a certain ancestry proportion, e.g, AFR 0.8 EUR 0.2. 
+In addition, the order of observation tables that are given as arguments is important; 
+Odd positions are associated with population 1, while even positions with population 2. 
+For example, in order to simulate a monosomy case the observation tables should be given 
+as follows: "python MIX_HAPLOIDS -s monosomy HAPLOID1_AFR.obs.p HAPLOID2_EUR.obs.p_" |
 
 ## Create haploid-like observation table using phased genotypes from VCF files.
 
