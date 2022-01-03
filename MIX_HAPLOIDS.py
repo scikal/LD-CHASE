@@ -204,11 +204,11 @@ if __name__ == "__main__":
                         help='The number of base pairs (bp) sequenced from a DNA fragment. Default value 36.')
     parser.add_argument('-s', '--scenarios', type=str, nargs='+',
                         metavar='monosomy/disomy', default='disomy', choices=['monosomy','disomy'],
-                        help="The simulation supports two scenarios: monosomy/disomys. Default scenario is disomy."
+                        help="The simulation supports two scenarios: monosomy/disomy. Default scenario is disomy."
                              "Giving a both scenarios, e.g. \"disomy monosomy\" would create a batch of simulations."
                              "In batch mode, the first observation table would be used to simulate monosomy.")
     parser.add_argument('-o', '--output-filename', metavar='OUTPUT_FILENAME', type=str,
-                        help='Output filename. The default filename is a combination of both obs filenames.')
+                        help='Output filename. The default filename includes all the sample IDs associated with the given observation tables.')
     parser.add_argument('-c', '--compress', metavar='gz/bz2/unc', type=str, default='unc',  choices=['gz','bz2','unc'],
                         help='Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed.')
     parser.add_argument('-a', '--distant-admixture', metavar='FLOAT FLOAT', nargs='+', default=[],
