@@ -346,6 +346,7 @@ def statistics(likelihoods,windows):
 
 def print_summary(info):
     S = info['statistics']
+    ancestral_makeup = ", ".join("{:.1f}% {}".format(100*v, k) for k, v in info['ancestral_makeup'].items()) if type(info['ancestral_makeup'])==dict else ', '.join(info['ancestral_makeup'])
     print('\nFilename of the disomy observation table: %s' % info['disomy_obs_filename'])
     print('\nFilename of the monosomy observation table: %s' % info['monosomy_obs_filename'])
     print('\nSummary statistics:')
@@ -356,7 +357,7 @@ def print_summary(info):
     print('Number of genomic windows: %d, Mean and standard error of genomic window size: %d, %d.' % (S.get('num_of_windows',0),S.get('window_size_mean',0),S.get('window_size_std',0)))
     print('Mean and standard error of meaningful reads per genomic window from the disomy sequence: %.1f, %.1f.' % (S.get('disomy_reads_mean',0), S.get('disomy_reads_std',0)))
     print('Mean and standard error of meaningful reads per genomic window from the monosomy sequence: %.1f, %.1f.' % (S.get('monosomy_reads_mean',0), S.get('monosomy_reads_std',0)))
-    print('Ancestry: %s, Fraction of alleles matched to the reference panel: %.3f.' % (', '.join(info['ancestry']),info['statistics']['matched_alleles']))
+    print('Ancestral makeup: %s, Fraction of alleles matched to the reference panel: %.3f.' % (ancestral_makeup, info['statistics']['matched_alleles']))
 
     if S.get('LLRs_per_chromosome',None):
         L = S['LLRs_per_chromosome']
@@ -446,7 +447,7 @@ def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,
             'read_length': {'monosomy': monosomy_info['read_length'], 'disomy': disomy_info['read_length']},
             'disomy_obs_filename': disomy_obs_filename,
             'monosomy_obs_filename': monosomy_obs_filename,
-            'ancestry': ancestry,
+            'ancestral_makeup': ancestral_makeup,
             'window_size': window_size,
             'subsamples': subsamples,
             'offset': offset,
@@ -501,7 +502,7 @@ if __name__ == "__main__":
                         help='Takes into account only genomic windows with at least INT reads per homolog, admitting non-zero score. The minimal value is 3, while the default is 6.')
     parser.add_argument('-M', '--max-reads', type=int, metavar='INT', default=4,
                         help='Selects up to INT reads per homolog from each genomic windows in each bootstrap sampling. The minimal value is 2, while the default value is 4.')
-    parser.add_argument('-F', '--min-HF', type=int, metavar='FLOAT', default=0.05,
+    parser.add_argument('-F', '--min-HF', type=float, metavar='FLOAT', default=0.05,
                         help='Only haplotypes with a frequnecy between FLOAT and 1-FLOAT add to the score of a read. The default value is 0.05.')
     parser.add_argument('-S', '--min-score', type=int, metavar='INT', default=2,
                         help='Consider only reads that reach the minimal score. The default value is 2.')
