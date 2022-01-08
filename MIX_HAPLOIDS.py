@@ -66,27 +66,28 @@ def build_obs_tab(obs_dicts, chr_id, read_length, depth, scenario):
 
     return obs_tab
 
-def build_obs_tab_distant(obs_dicts, chr_id, read_length, depth, scenario, proportions):
+def build_obs_tab_distant(obs_dicts, chr_id, read_length, depth, scenario, proportions, configurations=None):
     """ Mixes reads of DNA sequencing to simulate various aneuploidy landscapes in distant admixtures. """
 
     num_of_reads = number_of_reads(chr_id,read_length,depth)
-    regions = 40
     obs_tab = list()
     dx, odd = divmod(read_length, 2)
 
-    number_of_haplotypes = {'monosomy':1, 'disomy':2}
-    rsize = chr_length(chr_id)//regions
-    
-    #### Defines ancestry in each genomic window ####
-    rnd_ancestry = lambda: sum(choices([[1,0],[0,1]], weights=proportions, k=number_of_haplotypes[scenario]),start=[])
-    if scenario in {'monosomy', 'disomy'}:
-        configurations = {(i*rsize,(i+1)*rsize): rnd_ancestry() for i in range(regions)}
-    else:
-        raise Exception('error: undefined scenario.')
+    #### Defines ancestry in each genomic window ####        
+    if configurations==None:
+        regions = chr_length(chr_id)//5000000
+        number_of_haplotypes = {'monosomy':1, 'disomy':2}
+        rsize = chr_length(chr_id)//regions
+        
+        rnd_ancestry = lambda: sum(choices([[1,0],[0,1]], weights=proportions, k=number_of_haplotypes[scenario]),start=[])
+        if scenario in {'monosomy', 'disomy'}:
+            configurations = {(i*rsize,(i+1)*rsize): rnd_ancestry() for i in range(regions)}
+        else:
+            raise Exception('error: undefined scenario.')
     #################################################
 
     for (start,stop),W in configurations.items():
-        for k in range(num_of_reads//regions):
+        for k in range(num_of_reads//len(configurations)):
             p = randrange(start,stop) + 1
             read_boundaries = (p-dx,p+dx+odd)
             rnd = choices(range(len(W)), weights=W, k=1)[0]
@@ -151,6 +152,12 @@ def MixHaploids(obs_filenames, read_length, depth, scenarios, **kwargs):
 
     if distant_admixture:
         print('mode: distant admixture (each homolog is a mosaic of haplotypes, where each haplotype is associated with one out of two possible ancestries).')
+        regions = chr_length(chr_id)//5000000
+        rsize = chr_length(chr_id)//regions
+        configurations = {}
+        configurations['monosomy'] = {(i*rsize,(i+1)*rsize): choices([[1,0],[0,1]], weights=distant_admixture).pop() for i in range(regions)}
+        monosomy2 = {(i*rsize,(i+1)*rsize): choices([[1,0],[0,1]], weights=distant_admixture).pop() for i in range(regions)}
+        configurations['disomy'] = {i: configurations['monosomy'][i] + monosomy2[i] for i in monosomy2}
     else:
         print('mode: non-admixed/recent-admixture (each homolog is associated with a specific ancestry).')
 
@@ -163,7 +170,8 @@ def MixHaploids(obs_filenames, read_length, depth, scenarios, **kwargs):
         if distant_admixture==[]:
             obs_tab = build_obs_tab(obs_dicts, chr_id, read_length, effective_depth, scenario)
         else:
-            obs_tab = build_obs_tab_distant(obs_dicts, chr_id, read_length, effective_depth, scenario, distant_admixture)
+            obs_tab = build_obs_tab_distant(obs_dicts, chr_id, read_length, effective_depth, scenario, distant_admixture, configurations[scenario])
+            
 
         sample_ids = [info_dicts[i].get('sample_id',obs_filenames[i].strip().rsplit('/',1).pop()[:-6])
                           + info_dicts[i].get('haplotype','')
