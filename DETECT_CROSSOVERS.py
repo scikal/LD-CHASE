@@ -444,7 +444,6 @@ def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,
 
     info = {'chr_id': disomy_info['chr_id'],
             'depth': {'monosomy': monosomy_info['depth'], 'disomy': disomy_info['depth']},
-            'read_length': {'monosomy': monosomy_info['read_length'], 'disomy': disomy_info['read_length']},
             'disomy_obs_filename': disomy_obs_filename,
             'monosomy_obs_filename': monosomy_obs_filename,
             'ancestral_makeup': ancestral_makeup,
@@ -457,6 +456,9 @@ def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,
             'min_HF': min_HF,    
             'statistics': {**statistics(likelihoods,windows_dict), **some_statistics}}
     
+    if 'read_length' in monosomy_info and 'read_length' in disomy_info:
+            info.update({'read_length': {'monosomy': monosomy_info['read_length'], 'disomy': disomy_info['read_length']}})
+
     if output_filename!=None:
         save_results(likelihoods,info,compress,disomy_obs_filename,output_filename,kwargs.get('output_dir', 'results'))
 
