@@ -454,11 +454,10 @@ def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,
             'max_reads': max_reads,
             'min_score': min_score,
             'min_HF': min_HF,    
-            'statistics': {**statistics(likelihoods,windows_dict), **some_statistics}}
+            'statistics': {**statistics(likelihoods,windows_dict), **some_statistics},
+            'read_length': {'monosomy': monosomy_info.get('read_length',None), 'disomy': disomy_info.get('read_length',None)}}
     
-    if 'read_length' in monosomy_info and 'read_length' in disomy_info:
-            info.update({'read_length': {'monosomy': monosomy_info['read_length'], 'disomy': disomy_info['read_length']}})
-
+    
     if output_filename!=None:
         save_results(likelihoods,info,compress,disomy_obs_filename,output_filename,kwargs.get('output_dir', 'results'))
 
