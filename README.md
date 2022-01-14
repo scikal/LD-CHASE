@@ -1,9 +1,7 @@
 **Contrast-Crossovers**
 
-A tool for Haplotype-aware inference of human chromosome crossovers.
+_A tool for Haplotype-aware inference of human chromosome crossovers._
 
 ![CC_scheme](https://github.com/scikal/contrast-crossovers/blob/main/illustrations/CC_fig1.png)
-
-*Short description:*
 
 Extra or missing chromosomes—a phenomenon termed aneuploidy—frequently arises during human meiosis and embryonic mitosis and is the leading cause of pregnancy loss, including in the context of in vitro fertilization (IVF). Aneuploidy attributable to meiotic errors affect all cells due to chromosome segregation errors, and these incidence increase drastically with maternal age. Since the oocyte is the only viable product of female meiosis, our understanding of predisposing event in human oocytes relies largely on inference from genetic analysis of oocytes obtained from fertility centers. The ability to reliably trace abnormalities in genome-wide ploidy is valuable for enhancing IVF outcomes and thus preimplantation genetic testing of aneuploidy (PGT-A) became a common practice during IVF. The shallow whole-genome sequencing of human blastocysts during genetic tests accumulates to large datasets, which can be exploited to study the various pathways to oocyte aneuploidy. Here, we introduce Contrasting-Crossovers (CC), a statistical method that exploits the high rate of paternal monosomies to contrast the crossovers in sibling embryos from the same IVF cycle. Our method uses low-coverage whole-genome sequencing data, which is the current standard in the field, to provide fundamental insight into the recombination landscape in human males. Our approach overcomes the sparse nature of the data by leveraging allele frequencies and linkage disequilibrium (LD) measured in a population reference panel and retains high accuracy down to coverage as low as 0.02x per homolog. In addition, it can serve as a practical tool for karyomapping, when a single sperm is sequenced on an ad hoc basis to contrast crossovers of sibling embryos. Thus, CC holds promise to improve preimplantation genetic testing for monogenic disorders (PGT-M) during IVF.
