@@ -1,6 +1,4 @@
-**Contrast-Crossovers**
-
-_A tool for Haplotype-aware inference of human chromosome crossovers._
+**Contrast-Crossovers** - _A tool for Haplotype-aware inference of human chromosome crossovers._
 
 ![CC_scheme](https://github.com/scikal/contrast-crossovers/blob/main/illustrations/CC_fig1.png)
 
