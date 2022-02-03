@@ -13,7 +13,7 @@ from statistics import mean, variance
 from math import log
 from operator import attrgetter
 import argparse, sys
-from itertools import product, starmap, chain
+from itertools import product, starmap, chain, accumulate, islice
 
 likelihoods_tuple = collections.namedtuple('likelihoods_tuple', ('monosomy', 'disomy', 'SPH', 'BPH'))
 
@@ -159,6 +159,44 @@ def detect_transition(X, Y, E):
         
     return result
 
+def detect_crossovers(genomic_windows, mean_of_LLRs, variance_of_LLRs, z_score=1.96, lookahead=20):
+    """ Detecting crossovers by indetifying transitions between BPH and SPH 
+        regions. """
+        
+    crossovers = []
+    #Scan the chromosome in the 5'-to-3' direction to find crossovers.
+    x_coord = tuple(0.5*(a+b) for a,b in genomic_windows)
+    acc_means = tuple(accumulate(mean_of_LLRs))
+    acc_vars = tuple(accumulate(variance_of_LLRs))
+    triple = tuple(zip(x_coord, acc_means, acc_vars))
+    
+    #maxima and minima candidates are temporarily stored in mx and mn, respectively.
+    mx, mn, last_ind = None, None, 0
+        
+    for index, (x, y, v) in enumerate(triple):
+        
+        if  mx==None or y > mx:
+            mx_index,mx_pos,mx,mx_var = index,x,y,v
+        
+        if  mn==None or y < mn:
+            mn_index,mn_pos,mn,mn_var = index,x,y,v
+
+        if mx!=None and 0 < (mx-y)-z_score*(v-mx_var)**.5 and index-mx_index>=lookahead:
+            for x2, y2, v2 in triple[max(mx_index-lookahead,last_ind):last_ind:-1]:
+                if 0 < (mx-y2)-z_score*(mx_var-v2)**.5:
+                    crossovers.append(mx_pos)
+                    mx, mn, last_ind = None, None, mx_index # set algorithm to find the next minima
+                    break
+                
+        if mn!=None and 0 < (y-mn)-z_score*(v-mn_var)**.5  and index-mn_index>=lookahead:    
+            for x2, y2, v2 in triple[max(mn_index-lookahead,last_ind):last_ind:-1]:
+                if  0 < (y2-mn)-z_score*(mn_var-v2)**.5:    
+                    crossovers.append(mn_pos)
+                    mx, mn, last_ind = None, None, mn_index # set algorithm to find the next maxima
+                    break
+                
+    return crossovers
+
 def clusters_crossovers(crossovers, dx):
     """ Clusters crossovers in a region of width dx, when this regions contains
         at least k crossovers. Then, the crossovers in each cluster are averaged
@@ -194,6 +232,8 @@ def panel_plot(DATA,**kwargs):
     scale = kwargs.get('scale', 0.5)
     bin_size = kwargs.get('bin_size', 4000000)
     z_score = kwargs.get('z_score', 1.96)
+    lookahead = kwargs.get('lookahead', 20)
+
     save = kwargs.get('save', '')
     
     fs=28 * scale
@@ -228,7 +268,7 @@ def panel_plot(DATA,**kwargs):
     AX = [i for j in axs for i in j] if len(DATA)>columns else axs
         
     YMAX = [0]*len(DATA)
-    transitions = []
+    crossovers = []
     for g,(ax1,(identifier,(likelihoods,info))) in enumerate(zip(AX,DATA.items())):
 
 
@@ -251,8 +291,17 @@ def panel_plot(DATA,**kwargs):
         
         yabsmax = max(map(abs,Y))
         
-        transitions.append(detect_transition(X,Y,E))
-                
+        ###transitions.append(detect_transition(X,Y,E))
+        
+        l = chr_length(info['chr_id'])
+        genomic_windows = info['statistics']['LLRs_per_genomic_window']
+        mean_of_LLRs = [a for a,b in info['statistics']['LLRs_per_genomic_window'].values()]
+        variance_of_LLRs = [b for a,b in info['statistics']['LLRs_per_genomic_window'].values()]
+        
+        C = [i/l for i in detect_crossovers(genomic_windows, mean_of_LLRs, variance_of_LLRs, z_score=z_score, lookahead=lookahead)]
+        crossovers.append(C)     
+        
+        
         YMAX[g] = yabsmax if YMAX[g]< yabsmax else YMAX[g]
 
     for g,(ax1,(identifier,(likelihoods,info))) in enumerate(zip(AX,DATA.items())):
@@ -265,7 +314,7 @@ def panel_plot(DATA,**kwargs):
     
     if len({info['chr_id'] for likelihoods,info in DATA.values()})==1:
         plot_monosomy_crossovers = True
-        monosomy_crossovers = clusters_crossovers(transitions, dx=1/num_of_bins[info['chr_id']])
+        monosomy_crossovers = clusters_crossovers(crossovers, dx=1000000/l) #1/num_of_bins[info['chr_id']])
     else:
         plot_monosomy_crossovers = False
         
@@ -289,7 +338,7 @@ def panel_plot(DATA,**kwargs):
         for axis in ['top','bottom','left','right']:
             ax1.spines[axis].set_linewidth(2*scale)
             
-        for i in transitions[g]:
+        for i in crossovers[g]:
             ax1.plot([i,i],[-1.01*ymax,1.01*ymax],color='purple', ls='dotted',alpha=0.7,zorder=19, linewidth=2*scale, scalex=False, scaley=False)
         
         if plot_monosomy_crossovers:
@@ -491,6 +540,10 @@ filenames = [
 "/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe/CHA-S-1-30-May-2020.CHA-S-14-30-May-2020.chr10.LLR.p.bz2",
 "/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe/CHA-S-1-30-May-2020.CHA-S-11-30-May-2020.chr10.LLR.p.bz2",
 "/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe/CHA-S-1-30-May-2020.CHA-S-8-30-May-2020.chr10.LLR.p.bz2"]
+
+#filenames = [
+#"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe/TSA-M-1-21-Jul-2020.TSA-M-1-21-Jul-2020.chr15.LLR.p.bz2",
+#"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe/TSA-M-1-21-Jul-2020.TSA-M-2-21-Jul-2020.chr15.LLR.p.bz2"]
 
 #wrap_single_plot(llr_filename=filenames[0])
 
