@@ -394,6 +394,7 @@ def single_plot(likelihoods,info,**kwargs):
     z_score = kwargs.get('z_score', 1.96)
     bin_size = kwargs.get('bin_size', 4000000)
     save = kwargs.get('save', '')
+    save = kwargs.get('extension', 'svg')
     
     if save!='':
         mpl.use('Agg')
@@ -458,7 +459,7 @@ def single_plot(likelihoods,info,**kwargs):
     if save!='':
         print('Saving plot...')
         #ax1.set_title(save.rpartition('/')[-1].removesuffix('.png'))
-        extension = 'svg'
+        #extension = 'svg'
         plt.tight_layout()
         plt.savefig('.'.join([save,extension]), format=extension, bbox_inches='tight')
         plt.close(fig)
