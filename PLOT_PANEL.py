@@ -14,6 +14,8 @@ from math import log
 from operator import attrgetter
 import argparse, sys
 from itertools import product, starmap, chain, accumulate, islice
+from collections import ChainMap
+
 
 likelihoods_tuple = collections.namedtuple('likelihoods_tuple', ('monosomy', 'disomy', 'SPH', 'BPH'))
 
@@ -163,7 +165,7 @@ def detect_crossovers(genomic_windows, mean_of_LLRs, variance_of_LLRs, z_score=1
     """ Detecting crossovers by indetifying transitions between BPH and SPH 
         regions. """
         
-    crossovers = []
+    crossovers = {}
     #Scan the chromosome in the 5'-to-3' direction to find crossovers.
     x_coord = tuple(0.5*(a+b) for a,b in genomic_windows)
     acc_means = tuple(accumulate(mean_of_LLRs))
@@ -184,38 +186,48 @@ def detect_crossovers(genomic_windows, mean_of_LLRs, variance_of_LLRs, z_score=1
         if mx!=None and 0 < (mx-y)-z_score*(v-mx_var)**.5 and index-mx_index>=lookahead:
             for x2, y2, v2 in triple[max(mx_index-lookahead,last_ind):last_ind:-1]:
                 if 0 < (mx-y2)-z_score*(mx_var-v2)**.5:
-                    crossovers.append(mx_pos)
+                    kappa = min((mx-y2)/(mx_var-v2)**.5,(mx-y)/(v-mx_var)**.5)
+                    crossovers[mx_pos] = kappa
                     mx, mn, last_ind = None, None, mx_index # set algorithm to find the next minima
                     break
                 
         if mn!=None and 0 < (y-mn)-z_score*(v-mn_var)**.5  and index-mn_index>=lookahead:    
             for x2, y2, v2 in triple[max(mn_index-lookahead,last_ind):last_ind:-1]:
-                if  0 < (y2-mn)-z_score*(mn_var-v2)**.5:    
-                    crossovers.append(mn_pos)
+                if  0 < (y2-mn)-z_score*(mn_var-v2)**.5:
+                    kappa = min((y2-mn)/(mn_var-v2)**.5,(y-mn)/(v-mn_var)**.5)
+                    crossovers[mn_pos] = kappa
                     mx, mn, last_ind = None, None, mn_index # set algorithm to find the next maxima
                     break
                 
     return crossovers
-
+    
 def clusters_crossovers(crossovers, dx):
     """ Clusters crossovers in a region of width dx, when this regions contains
         at least k crossovers. Then, the crossovers in each cluster are averaged
         and associated with a single crossover in the monosomy."""
-    C = tuple(c for c in crossovers if len(c)!=0)
     
-    C_flatten =  sorted(chain.from_iterable(C))
     monosomy_crossovers = {}
     
-    for k in range(len(C)-1, int(0.5 * len(C)), -1):
+    C_filtered = [*filter(len,crossovers.values())] # Ignore empty cases.
+    lenC = len(C_filtered)
     
+    if lenC:
+        C_flatten, K_flatten = zip(*sorted(ChainMap(*C_filtered).items()) ) # Combine all crossovers into one sorted list.
+       
+    for k in range(lenC, int(0.5 *lenC)+1, -1):
         i = 0
-        while(i<len(C_flatten)-k):
-            if C_flatten[i+k]-C_flatten[i] < dx:
-                monosomy_crossovers[sum(C_flatten[i:i+k+1])/(k+1)] = C_flatten[i:i+k+1]
-                del C_flatten[i:i+k+1]
-                i += k+1
+        while(i<=len(C_flatten)-k):
+            if C_flatten[i+k-1]-C_flatten[i] < dx:
+                monosomy_crossovers[sum(C_flatten[i:i+k])/k] = (C_flatten[i:i+k], k/lenC, min(K_flatten[i:i+k])  )
+                C_flatten = C_flatten[:i] + C_flatten[i+k:] #Equivalent of del C_flatten[i:i+k+1], but works on tuples.
+                K_flatten = K_flatten[:i] + K_flatten[i+k:] #Equivalent of del K_flatten[i:i+k+1], but works on tuples.
+                i += k
             else:        
                 i += 1    
+            
+    # The keys are the averaged crossovers of each cluster. In addition, the value is a tuple that contains:
+    # (a) crossovers in the cluster, (b) proportion crossovers that supported the cluster formation and
+    # (c) The minimal kappa score of the supporting crossovers.
     return monosomy_crossovers
 
 def capitalize(x):
@@ -232,7 +244,7 @@ def panel_plot(DATA,**kwargs):
     scale = kwargs.get('scale', 0.5)
     bin_size = kwargs.get('bin_size', 4000000)
     z_score = kwargs.get('z_score', 1.96)
-    lookahead = kwargs.get('lookahead', 20)
+    lookahead = kwargs.get('lookahead', 30)
 
     save = kwargs.get('save', '')
     
@@ -268,7 +280,7 @@ def panel_plot(DATA,**kwargs):
     AX = [i for j in axs for i in j] if len(DATA)>columns else axs
         
     YMAX = [0]*len(DATA)
-    crossovers = []
+    crossovers = {}
     for g,(ax1,(identifier,(likelihoods,info))) in enumerate(zip(AX,DATA.items())):
 
 
@@ -297,10 +309,8 @@ def panel_plot(DATA,**kwargs):
         genomic_windows = info['statistics']['LLRs_per_genomic_window']
         mean_of_LLRs = [a for a,b in info['statistics']['LLRs_per_genomic_window'].values()]
         variance_of_LLRs = [b for a,b in info['statistics']['LLRs_per_genomic_window'].values()]
-        
-        C = [i/l for i in detect_crossovers(genomic_windows, mean_of_LLRs, variance_of_LLRs, z_score=z_score, lookahead=lookahead)]
-        crossovers.append(C)     
-        
+        unnormalized_crossovers = detect_crossovers(genomic_windows, mean_of_LLRs, variance_of_LLRs, z_score=z_score, lookahead=lookahead)
+        crossovers[g] = {pos/l: kappa for pos,kappa in unnormalized_crossovers.items()}
         
         YMAX[g] = yabsmax if YMAX[g]< yabsmax else YMAX[g]
 
