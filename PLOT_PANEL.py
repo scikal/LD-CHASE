@@ -37,13 +37,13 @@ def mean_and_var(x):
     return m, var
 
 def mean_and_std_of_mean_of_rnd_var(A):
-    """ Calculates the mean and population standard deviation of the mean of random variables.
+    """ Calculates the mean and sample standard deviation of the mean of random variables.
         Each row of A represents a random variable, with observations in the columns."""
     if type(A)==dict:
         A = tuple(tuple(i) for i in A.values()) 
     
-    M, N = len(A), len(A[0])
-    mu = sum(sum(likelihoods_in_window)/N for likelihoods_in_window in A)
+    M, N = len(A), len(A[0])  ### N is the number of random variables, while M is the number of samples.
+    mu = sum(sum(likelihoods_in_window) for likelihoods_in_window in A) / N
     arg = ((sum(sampled_likelihoods) - mu)**2 for sampled_likelihoods in zip(*A))
     std = (sum(arg) / (N - 1))**.5 / M
     mean = mu / M
@@ -247,6 +247,8 @@ def panel_plot(DATA,**kwargs):
     lookahead = kwargs.get('lookahead', 30)
 
     save = kwargs.get('save', '')
+    extension = kwargs.get('extension', 'svg')
+
     
     fs=28 * scale
     columns = 6
@@ -271,7 +273,7 @@ def panel_plot(DATA,**kwargs):
 
     if len(DATA)>columns:
         fig,axs = plt.subplots(rows ,columns, sharex='col', sharey='row', figsize=(6.666 * columns * scale, 5.625 * rows * scale))
-        fig.subplots_adjust(left=0.05, bottom=0.1, right=.99, top=(0.85 if kwargs.get('title',None) else 0.90), wspace=None, hspace=None)
+        fig.subplots_adjust(left=0.045, bottom=0.1, right=.99, top=(0.85 if kwargs.get('title',None) else 0.90), wspace=None, hspace=None)
     else:
         fig,axs = plt.subplots(rows ,columns, sharex='none', sharey='row', figsize=( 6.666 * columns * scale, 1.25 * 5.625 * rows * scale))
         fig.subplots_adjust(left=0.05, bottom=0.3, right=.99, top=(0.82 if kwargs.get('title',None) else 0.86), wspace=None, hspace=None)
@@ -373,8 +375,8 @@ def panel_plot(DATA,**kwargs):
     if save!='':
         print('Saving plot...')
         #ax1.set_title(save.rpartition('/')[-1].removesuffix('.png'))
-        plt.tight_layout()
-        extension = 'svg'
+        #plt.tight_layout()
+        #extension = 'svg'
         plt.savefig('.'.join([save,extension]), format=extension) #bbox_inches='tight'
         plt.close(fig)
     else:
@@ -394,7 +396,7 @@ def single_plot(likelihoods,info,**kwargs):
     z_score = kwargs.get('z_score', 1.96)
     bin_size = kwargs.get('bin_size', 4000000)
     save = kwargs.get('save', '')
-    save = kwargs.get('extension', 'svg')
+    extension = kwargs.get('extension', 'svg')
     
     if save!='':
         mpl.use('Agg')
@@ -460,7 +462,7 @@ def single_plot(likelihoods,info,**kwargs):
         print('Saving plot...')
         #ax1.set_title(save.rpartition('/')[-1].removesuffix('.png'))
         #extension = 'svg'
-        plt.tight_layout()
+        #plt.tight_layout()
         plt.savefig('.'.join([save,extension]), format=extension, bbox_inches='tight')
         plt.close(fig)
         
