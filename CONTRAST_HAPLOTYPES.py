@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-CONTRAST
+CONTRAST_HAPLOTYPES
 
 Given sparse aligned sequences from a monosomy and a disomy, the chromosome is 
 divided into genomic windows and likelihoods of matched and unmathced 
@@ -388,7 +388,7 @@ def save_results(likelihoods,info,compress,obs_filename,output_filename,output_d
         pickle.dump(info, f, protocol=4)
     return output_dir + output_filename
 
-def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,
+def contrast(disomy_obs_filename,monosomy_obs_filename,leg_filename,
                         hap_filename,samp_filename,ancestral_makeup,
                         window_size,subsamples,offset,min_reads,max_reads,
                         min_score,min_HF,output_filename,compress,**kwargs):
@@ -520,62 +520,10 @@ if __name__ == "__main__":
     else:
         raise Exception('error: Invalid argument supplied for ancestral makeup.')
 
-    LLR_dict, info = contrast_crossovers(**args)
+    LLR_dict, info = contrast(**args)
 
     sys.exit(0)
 else:
     print("The module CONTRAST was imported.")
 
 ### END OF FILE ###
-
-
-"""
-import sys
-
-if sys.platform == "linux" or sys.platform == "linux2":
-    print('Detected a linux OS.')
-    HOME='home'
-elif sys.platform == "darwin":
-    print('Detected a mac OS.')
-    HOME='Users'
-elif sys.platform == "win32":
-    print('Detected a windows OS.')
-    HOME='????????'
-    
-def aneuploidy_test_demo(disomy_obs_filename,monosomy_obs_filename,chr_id,sp,ancestral_makeup,model,min_reads,max_reads,output_dir,ref_dir):
-
-    args = dict(disomy_obs_filename = disomy_obs_filename,
-                monosomy_obs_filename = monosomy_obs_filename,
-                hap_filename = ref_dir + f'{sp:s}_panel/{chr_id:s}_{sp:s}_panel.hap.gz',
-                leg_filename = ref_dir + f'{sp:s}_panel/{chr_id:s}_{sp:s}_panel.legend.gz',
-                samp_filename = ref_dir + f'{sp:s}_panel/{sp:s}_panel.samples.gz',
-                window_size = 0,
-                subsamples = 100,
-                offset = 0,
-                min_reads = min_reads, #3,
-                max_reads = max_reads, #8,
-                min_HF = 0.05,
-                min_score = 2,
-                output_dir = output_dir, #f'results_{sp:s}/',
-                output_filename = '',
-                compress = 'bz2',
-                ancestral_makeup = ancestral_makeup,
-                seed=0)
-                #model = model)
-
-
-    LLR_dict, info = contrast_crossovers(**args)
-    return LLR_dict, info
-
-disomy_obs_filename=f'/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/LD-PGTA_SE/results/simulated.disomy.chr16.x0.100.HG00174B.HG01694B.obs.p.bz2'
-monosomy_obs_filename=f'/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/LD-PGTA_SE/results/simulated.monosomy.chr16.x0.050.NA12873B.obs.p.bz2'
-sp='EUR'
-ref_dir = f'/{HOME:s}/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/'
-output_dir = 'results/'
-min_reads = 16
-max_reads = 8
-ancestral_makeup = {}
-chr_id='chr16'
-model=None
-aneuploidy_test_demo(disomy_obs_filename,monosomy_obs_filename,chr_id,sp,ancestral_makeup,model,min_reads,max_reads,output_dir,ref_dir)
-"""
