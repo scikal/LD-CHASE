@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-DETECT_CROSSOVERS
+SCAN_FOR_MATCHED_HAPLOTYPES
 
-Builds a dictionary that lists genomic windows that contain at least three
-reads and gives the likelihoods to observese these reads under various
-aneuploidy landscapes --- i.e., monosomy, disomy, SPH and BPH.
+Given sparse aligned sequences from a monosomy and a disomy, the chromosome is 
+divided into genomic windows and the likelihoods of matched
+and unmathced haplotypes are calculated for each genomic window.
 
-BPH (Both Parental Homologs) correspond to the presence of three unmatched
-haplotypes, while SPH (Single Parental Homolog) correspond to chromosome gains
-involving identical homologs.
 Daniel Ariad (daniel@ariad.org)
-Sep 1, 2020
+Mar 10, 2022
 """
 
 import collections, time, pickle, argparse, re, sys, random, os, bz2, gzip, platform
@@ -471,11 +468,8 @@ def contrast_crossovers(disomy_obs_filename,monosomy_obs_filename,leg_filename,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
     description='Builds a dictionary that lists genomic windows that contain'
-                'at least two reads and gives the associated log-likelihood '
-                'BPH/SPH ratio (LLR). BPH (Both Parental Homologs) correspond'
-                'to the presence of three unmatched haplotypes, while SPH'
-                '(Single Parental Homolog) correspond to chromosome gains'
-                'involving identical homologs.')
+                'at least three reads and gives the associated log-likelihood '
+                'ratio (LLR) of unmatch haplotypes to matched haplotypes.')
     parser.add_argument('disomy_obs_filename', metavar='DISOMY_OBS_FILENAME', type=str,
                         help='A observations file created by MAKE_OBS_TAB for a disomy.')
     parser.add_argument('monosomy_obs_filename', metavar='MONOSOMY_OBS_FILENAME', type=str,
@@ -527,7 +521,7 @@ if __name__ == "__main__":
 
     sys.exit(0)
 else:
-    print("The module ANEUPLOIDY_TEST was imported.")
+    print("The module SCAN_FOR_MATCHED_HAPLOTYPES was imported.")
 
 ### END OF FILE ###
 
