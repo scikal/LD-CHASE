@@ -4,8 +4,8 @@
 SCAN_FOR_MATCHED_HAPLOTYPES
 
 Given sparse aligned sequences from a monosomy and a disomy, the chromosome is 
-divided into genomic windows and the likelihoods of matched
-and unmathced haplotypes are calculated for each genomic window.
+divided into genomic windows and likelihoods of matched and unmathced 
+haplotypes are calculated for each genomic window.
 
 Daniel Ariad (daniel@ariad.org)
 Mar 10, 2022
