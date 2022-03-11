@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-SCAN_FOR_MATCHED_HAPLOTYPES
+CONTRAST
 
 Given sparse aligned sequences from a monosomy and a disomy, the chromosome is 
 divided into genomic windows and likelihoods of matched and unmathced 
@@ -190,6 +190,9 @@ def build_gw_dict(disomy, monosomy, window_size, offset, min_reads, max_reads, m
     adaptive, window_size = (False, int(window_size)) if window_size else (True, initial_win_size)
     offset = int(offset)
 
+    assert len(disomy.positions), 'error: the observation table of the disomy is empty.'
+    assert len(monosomy.positions), 'error: the observation table of the monosomy is empty.'
+    
     positions = sorted(disomy.positions+monosomy.positions)
     first, last = positions[0] + offset, positions[-1] + window_size
     a, b  = first, first+window_size
@@ -521,7 +524,7 @@ if __name__ == "__main__":
 
     sys.exit(0)
 else:
-    print("The module SCAN_FOR_MATCHED_HAPLOTYPES was imported.")
+    print("The module CONTRAST was imported.")
 
 ### END OF FILE ###
 
