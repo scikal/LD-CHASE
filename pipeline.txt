@@ -1,7 +1,7 @@
 ## Table of Contents  
 
 #### Introduction
-[What is Contrast-Crossovers?](#background)
+[What is Contrast-Crossovers good for?](#background)
 
 #### Tutorial
 [Stage 1: Sequence alignment](#seq_alignment) \
@@ -16,10 +16,10 @@
 [Description of the IMPUTE2 format for reference panels](#IMPUTE2) \
 [Generating IMPUTE2 reference panels from a VCF file](#"VCF2IMPUTE")
 
-# What is CONTRAST-CROSSOVERS? #
+# What is Contrast-Crossovers good for? #
 <a name="background"/>
 
-Extra or missing chromosomes—a phenomenon termed aneuploidy—frequently arises during human meiosis and embryonic mitosis and is the leading cause of pregnancy loss, including in the context of *in vitro* fertilization (IVF). While meiotic aneuploidies affect all cells and are deleterious, mitotic errors generate mosaicism, which may be compatible with healthy live birth. Large-scale abnormalities such as triploidy and haploidy also contribute to adverse pregnancy outcomes, but remain hidden from standard sequencing-based approaches to preimplantation genetic testing (PGT-A). The ability to reliably distinguish meiotic and mitotic aneuploidies, as well as abnormalities in genome-wide ploidy may thus prove valuable for enhancing IVF outcomes. Here, we describe a statistical method for distinguishing these forms of aneuploidy based on analysis of low-coverage whole-genome sequencing data, which is the current standard in the field. Our approach overcomes the sparse nature of the data by leveraging allele frequencies and linkage disequilibrium (LD) measured in a population reference panel. The method, which we term LD-informed PGT-A (LD-PGTA), retains high accuracy down to coverage as low as 0.05x and at higher coverage can also distinguish between meiosis I and meiosis II errors based on signatures spanning the centromeres. LD-PGTA provides fundamental insight into the origins of human chromosome abnormalities, as well as a practical tool with the potential to improve genetic testing during IVF.
+Extra or missing chromosomes—a phenomenon termed aneuploidy—frequently arises during human meiosis and embryonic mitosis and is the leading cause of pregnancy loss, including in the context of *in vitro* fertilization (IVF). Aneuploidy attributable to meiotic errors affect all cells due to chromosome segregation errors, and these incidence increase drastically with maternal age. Since the oocyte is the only viable product of female meiosis, our understanding of predisposing event in human oocytes relies largely on inference from genetic analysis of oocytes obtained from fertility centers. The ability to reliably trace abnormalities in genome-wide ploidy is valuable for enhancing IVF outcomes and thus preimplantation genetic testing of aneuploidy (PGT-A) became a common practice during IVF. The shallow whole-genome sequencing of human blastocysts during genetic tests accumulates to large datasets, which can be exploited to study the various pathways to oocyte aneuploidy. Here, we introduce Contrasting-Crossovers (CC), a statistical method that exploits the high rate of paternal monosomies to contrast the crossovers in sibling embryos from the same IVF cycle. Our method uses low-coverage whole-genome sequencing data, which is the current standard in the field, to provide fundamental insight into the recombination landscape in human males. Our approach overcomes the sparse nature of the data by leveraging allele frequencies and linkage disequilibrium (LD) measured in a population reference panel and retains high accuracy down to coverage as low as 0.02x per homolog. In addition, it can serve as a practical tool for karyomapping, when a single sperm is sequenced on an ad hoc basis to contrast crossovers of sibling embryos. Thus, CC holds promise to improve preimplantation genetic testing for monogenic disorders (PGT-M) during IVF.
 
 **For more information:**
 > Daniel Ariad, Stephanie M. Yan, Andrea R. Victor, Frank L. Barnes, Christo G. Zouves, Manuel Viotti, Rajiv C. McCoy. “Haplotype-aware inference of human chromosome abnormalities” | [PNAS November 16, 2021 118 (46) e2109307118](https://doi.org/10.1073/pnas.2109307118) | [bioRxiv:10.1101/2021.05.18.444721](https://www.biorxiv.org/content/10.1101/2021.05.18.444721v3) | [The study is summarized in this poster](http://ariad.org/_media/research/posters/ld_pgta_poster.pdf) 
@@ -161,11 +161,12 @@ where the first argument is the filename of the BAM file, containing reads mappe
 # Stage 4: Model comparison with log likelihood ratios #
 <a name="aneuploidy_test"/>
 
-The script `DETECT_CROSSOVERS.py` builds a dictionary that lists linkage disequilibrium (LD) blocks that contain at least two meaningful reads and gives the associated log-likelihood BPH/SPH ratio (LLR). BPH (Both Parental Homologs) describes to the presence of three unmatched haplotypes, while SPH (Single Parental Homolog) describes the presence of two identical haplotypes, with an additional unmatched haplotype. Finally, the script analyzes the dictionary and reports summary statistics, including the mean LLR, the standard error, the number of informative genomic windows and the fraction of genomic windows with a negative LLR.
+The script `SCAN_FOR_MATCHED_HAPLOTYPES.py` builds a dictionary that lists genomic windows that contain
+at least three reads and gives the associated log-likelihood ratio (LLR) of unmatch haplotypes to matched haplotypes.
 
 As demonstration, we run the script with the following arguments and flags:
 
-`python DETECT_CROSSOVERS.py  simulated.disomy.chr16.x0.100.NA12889A.HG00448A.obs.p.bz2 simulated.monosomy.chr16.x0.050.NA18644A.obs.p.bz2 chr16_EAS_EUR_panel.legend.gz chr16_EAS_EUR_panel.hap.gz EAS_EUR_panel.samples.gz EAS 0.7 EUR 0.3 --window-size 0 --min-reads 12 --max-reads 6 --compress bz2`,
+`python SCAN_FOR_MATCHED_HAPLOTYPES.py  simulated.disomy.chr16.x0.100.NA12889A.HG00448A.obs.p.bz2 simulated.monosomy.chr16.x0.050.NA18644A.obs.p.bz2 chr16_EAS_EUR_panel.legend.gz chr16_EAS_EUR_panel.hap.gz EAS_EUR_panel.samples.gz EAS 0.7 EUR 0.3 --window-size 0 --min-reads 12 --max-reads 6 --compress bz2`,
 
 where the first and second argument are filenames of observation tables for disomy and monosomy, respectively. The observation tables are created by MAKE_OBS_TAB and contain base observations at known SNP positions. The third argument is the filename of the reference panel legend, which lists the SNPs in our reference panel. The forth required argument is the filename of the reference panel haplotypes, which lists the haplotypes in our reference panel. The fifth required argument is the filename of the reference panel samples, which describes the ancestral group of the individuals consisting the reference panel. The rest of the non-optional arguments describe the ancestral makeup of the disomy. In general, the ancestral makeup is specified as follows:
 1. For non-admixtures the argument consists a single superpopulation, e.g., `EUR`.
@@ -197,12 +198,13 @@ As demonstration, we run the script with the following arguments and flags:
 `python3 PLOT_PANEL.py SRR6676163.LLR.p`,
 
 where the first argument is the filename of a pickle file created by ANEUPLOIDY_TEST, containing likelihoods to observese various
-aneuploidy landscapes.  In addition, the following flags are supported:
+aneuploidy landscapes.  When a few LLR files are given, a panel of plots would be produced. In addition, the following flags are supported:
 
 | Optional argument  | Description |
 | --- | --- |
 | `--pairs` | _Plots the LLR between scenario A and scenario B along the chromosome. The possible pairs are: BPH,DISOMY; DISOMY,SPH; SPH,MONOSOMY; DISOMY,MONOSOMY; BPH,SPH. In addition, giving a list of pairs would plot the LLR of each pair in the same figure, e.g. "BPH,SPH SPH,MONOSOMY". The default value is BPH,SPH._ |
-| `--bins` | _The numbers of bins the chromosome is divided into. The default value is 10._ |
+| `--bin-size` | _The bin size in which the chromosome is divided. The default value is 2,000,000 bp._ |
+| `--z-score` | _The z-score value for the confidence intervals. The default value is 1.96, which corresponds to confidence level of 95\%._ |
 
 # Simulating sequences of disomy and monosomy #
 <a name="simulate"/>
