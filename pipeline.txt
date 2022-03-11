@@ -7,7 +7,7 @@
 [Stage 1: Sequence alignment](#seq_alignment) \
 [Stage 2: Construction of the reference panel](#ref_panel) \
 [Stage 3: Tabulation of allele observations at known SNPs](#obs_tab) \
-[Stage 4: Model comparison with log likelihood ratios](#aneuploidy_test) \
+[Stage 4: Model comparison with log likelihood ratios](#contrast_haplotypes) \
 [Stage 5: Plot log-likelihood ratio vs. chromosomal position](#plot_llr)
 
 #### Additional documentation
@@ -19,7 +19,12 @@
 # What is Contrast-Crossovers good for? #
 <a name="background"/>
 
-Extra or missing chromosomes—a phenomenon termed aneuploidy—frequently arises during human meiosis and embryonic mitosis and is the leading cause of pregnancy loss, including in the context of *in vitro* fertilization (IVF). Aneuploidy attributable to meiotic errors affect all cells due to chromosome segregation errors, and these incidence increase drastically with maternal age. Since the oocyte is the only viable product of female meiosis, our understanding of predisposing event in human oocytes relies largely on inference from genetic analysis of oocytes obtained from fertility centers. The ability to reliably trace abnormalities in genome-wide ploidy is valuable for enhancing IVF outcomes and thus preimplantation genetic testing of aneuploidy (PGT-A) became a common practice during IVF. The shallow whole-genome sequencing of human blastocysts during genetic tests accumulates to large datasets, which can be exploited to study the various pathways to oocyte aneuploidy. Here, we introduce Contrasting-Crossovers (CC), a statistical method that exploits the high rate of paternal monosomies to contrast the crossovers in sibling embryos from the same IVF cycle. Our method uses low-coverage whole-genome sequencing data, which is the current standard in the field, to provide fundamental insight into the recombination landscape in human males. Our approach overcomes the sparse nature of the data by leveraging allele frequencies and linkage disequilibrium (LD) measured in a population reference panel and retains high accuracy down to coverage as low as 0.02x per homolog. In addition, it can serve as a practical tool for karyomapping, when a single sperm is sequenced on an ad hoc basis to contrast crossovers of sibling embryos. Thus, CC holds promise to improve preimplantation genetic testing for monogenic disorders (PGT-M) during IVF.
+Recombination between homologous chromosomes is a key source of human genetic diversity. The crossovers that mediate such genetic exchanges during meiosis are also important for ensuring the accuracy of chromosome segregation. In female meiosis, such crossovers are established early in fetal development and must be maintained for decades until meiosis resumes at ovulation. Understanding the landscape of meiotic recombination, its variation across individuals, and the processes by which it goes awry represent long-standing goals of human genetics. 
+
+Current approaches for inferring the landscape of recombination either rely on population patterns of linkage disequilibrium—capturing a time-averaged view of historical recombination events—or direct detection of crossovers based on genotyping of haploid gametes or families (e.g., parent-offspring trios), limiting the scale and availability of relevant datasets.
+Here we take another approach that relies on the genetic analysis of blastocysts from fertility centers . The ability to reliably trace abnormalities in genome-wide ploidy is valuable for enhancing IVF outcomes and thus preimplantation genetic testing of aneuploidy (PGT-A) became a common practice during IVF; The shallow whole-genome sequencing of human blastocysts during genetic tests accumulated to large datasets, which can be exploited to study the recombination landscape in oocytes and its relation to aneuploidy. To this end, we introduce an approach for inferring recombination from retrospective analysis of data from preimplantation genetic testing (PGT-A), which is based on low-coverage (<0.05x) whole-genome sequencing of biopsies from in vitro fertilized (IVF) embryos. 
+
+Our method overcomes the sparsity of the sequencing data by exploiting its inherent relatedness structure, knowledge of haplotypes from external population reference panels, as well as the frequent occurrence of chromosome loss (whereby the remaining chromosome is “phased” by default). Based on extensive simulation, we show that our method retains high accuracy down to coverages as low as 0.02x.  In addition, it can serve as a practical tool for karyomapping, when a single sperm is sequenced on an ad hoc basis to contrast crossovers of sibling embryos. Thus, CC holds promise to improve preimplantation genetic testing for monogenic disorders (PGT-M) during IVF.
 
 **For more information:**
 > Daniel Ariad, Stephanie M. Yan, Andrea R. Victor, Frank L. Barnes, Christo G. Zouves, Manuel Viotti, Rajiv C. McCoy. “Haplotype-aware inference of human chromosome abnormalities” | [PNAS November 16, 2021 118 (46) e2109307118](https://doi.org/10.1073/pnas.2109307118) | [bioRxiv:10.1101/2021.05.18.444721](https://www.biorxiv.org/content/10.1101/2021.05.18.444721v3) | [The study is summarized in this poster](http://ariad.org/_media/research/posters/ld_pgta_poster.pdf) 
@@ -159,7 +164,7 @@ where the first argument is the filename of the BAM file, containing reads mappe
 * In order to use the script, the Python module Pysam (v0.15.4) must be installed. Pysam is a lightweight wrapper of the htslib C-API, allowing our script to read SAM/BAM files. For more information check [ pysam-developers / pysam ](https://github.com/pysam-developers/pysam) and also [pysam: htslib interface for python](https://pysam.readthedocs.io/en/latest/index.html).
 
 # Stage 4: Model comparison with log likelihood ratios #
-<a name="aneuploidy_test"/>
+<a name="contrast_haplotypes"/>
 
 The script `CONTRAST_HAPLOTYPES.py` builds a dictionary that lists genomic windows that contain
 at least three reads and gives the associated log-likelihood ratio (LLR) of unmatch haplotypes to matched haplotypes.
@@ -403,6 +408,3 @@ Then, we convert from BCF to hap/legend/sample format used by IMPUTE2 and SHAPEI
 `rm chr21_EUR_panel.bcf`
 
 where `--haplegendsample prefix`  _converts from BCF to hap/legend/sample format used by IMPUTE2. The columns of the .legend file are ID,POS,REF,ALT. Moreover, in order to prevent strand swaps, the program uses IDs of the form "CHROM:POS_REF_ALT". The columns of the .sample file are population, group and sex._ 
-
-
-
