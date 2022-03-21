@@ -1,4 +1,4 @@
-## Table of Contents  
+## Table of Contents
 
 #### Introduction
 [What is Contrast-Crossovers good for?](#background)
@@ -19,15 +19,15 @@
 # What is Contrast-Crossovers good for? #
 <a name="background"/>
 
-Recombination between homologous chromosomes is a key source of human genetic diversity. The crossovers that mediate such genetic exchanges during meiosis are also important for ensuring the accuracy of chromosome segregation. In female meiosis, such crossovers are established early in fetal development and must be maintained for decades until meiosis resumes at ovulation. Understanding the landscape of meiotic recombination, its variation across individuals, and the processes by which it goes awry represent long-standing goals of human genetics. 
+Recombination between homologous chromosomes is a key source of human genetic diversity. The crossovers that mediate such genetic exchanges during meiosis are also important for ensuring the accuracy of chromosome segregation. In female meiosis, such crossovers are established early in fetal development and must be maintained for decades until meiosis resumes at ovulation. Understanding the landscape of meiotic recombination, its variation across individuals, and the processes by which it goes awry represent long-standing goals of human genetics.
 
 Current approaches for inferring the landscape of recombination either rely on population patterns of linkage disequilibrium—capturing a time-averaged view of historical recombination events—or direct detection of crossovers based on genotyping of haploid gametes or families (e.g., parent-offspring trios), limiting the scale and availability of relevant datasets.
-Here we take another approach that relies on the genetic analysis of blastocysts from fertility centers . The ability to reliably trace abnormalities in genome-wide ploidy is valuable for enhancing IVF outcomes and thus preimplantation genetic testing of aneuploidy (PGT-A) became a common practice during IVF; The shallow whole-genome sequencing of human blastocysts during genetic tests accumulated to large datasets, which can be exploited to study the recombination landscape in oocytes and its relation to aneuploidy. To this end, we introduce an approach for inferring recombination from retrospective analysis of data from preimplantation genetic testing (PGT-A), which is based on low-coverage (<0.05x) whole-genome sequencing of biopsies from in vitro fertilized (IVF) embryos. 
+Here we take another approach that relies on the genetic analysis of blastocysts from fertility centers . The ability to reliably trace abnormalities in genome-wide ploidy is valuable for enhancing IVF outcomes and thus preimplantation genetic testing of aneuploidy (PGT-A) became a common practice during IVF; The shallow whole-genome sequencing of human blastocysts during genetic tests accumulated to large datasets, which can be exploited to study the recombination landscape in oocytes and its relation to aneuploidy. To this end, we introduce an approach for inferring recombination from retrospective analysis of data from preimplantation genetic testing (PGT-A), which is based on low-coverage (<0.05x) whole-genome sequencing of biopsies from in vitro fertilized (IVF) embryos.
 
 Our method overcomes the sparsity of the sequencing data by exploiting its inherent relatedness structure, knowledge of haplotypes from external population reference panels, as well as the frequent occurrence of chromosome loss (whereby the remaining chromosome is “phased” by default). Based on extensive simulation, we show that our method retains high accuracy down to coverages as low as 0.02x.  In addition, it can serve as a practical tool for karyomapping, when a single sperm is sequenced on an ad hoc basis to contrast crossovers of sibling embryos. Thus, CC holds promise to improve preimplantation genetic testing for monogenic disorders (PGT-M) during IVF.
 
 **For more information:**
-> Daniel Ariad, Stephanie M. Yan, Andrea R. Victor, Frank L. Barnes, Christo G. Zouves, Manuel Viotti, Rajiv C. McCoy. “Haplotype-aware inference of human chromosome abnormalities” | [PNAS November 16, 2021 118 (46) e2109307118](https://doi.org/10.1073/pnas.2109307118) | [bioRxiv:10.1101/2021.05.18.444721](https://www.biorxiv.org/content/10.1101/2021.05.18.444721v3) | [The study is summarized in this poster](http://ariad.org/_media/research/posters/ld_pgta_poster.pdf) 
+> Daniel Ariad, Stephanie M. Yan, Andrea R. Victor, Frank L. Barnes, Christo G. Zouves, Manuel Viotti, Rajiv C. McCoy. “Haplotype-aware inference of human chromosome abnormalities” | [PNAS November 16, 2021 118 (46) e2109307118](https://doi.org/10.1073/pnas.2109307118) | [bioRxiv:10.1101/2021.05.18.444721](https://www.biorxiv.org/content/10.1101/2021.05.18.444721v3) | [The study is summarized in this poster](http://ariad.org/_media/research/posters/ld_pgta_poster.pdf)
 
 # Stage 1: Sequence alignment #
 <a name="seq_alignment"/>
@@ -86,7 +86,7 @@ where the option `-t6` allows multi-threading with 6 threads.
 
 ## Convert from SAM to BAM format ##
 
-Conversion from SAM to BAM format reduces data size and improves performance. In addition, many applications (such as genome browsers) require the reads in the BAM file to be coordinate-based sorted, i.e., the reads are ordered from “left” to “right” across the reference genome just as you would read across a line in a book. 
+Conversion from SAM to BAM format reduces data size and improves performance. In addition, many applications (such as genome browsers) require the reads in the BAM file to be coordinate-based sorted, i.e., the reads are ordered from “left” to “right” across the reference genome just as you would read across a line in a book.
 
 `samtools view -bS -F 4 SRR6676163.sam | samtools sort -@ 6 -o SRR6676163.sorted.bam -`
 
@@ -117,19 +117,19 @@ Reference: [High coverage whole genome sequencing of the expanded 1000 Genomes P
 
 ## Generate list of individuals to include in the creation of the reference panel ##
 
-Create an IMPUTE2 SAMPLE file, as explained in this [section](#IMPUTE2). In order to generate such a list for the 1000 genome project phase 3 visit https://www.internationalgenome.org/data-portal/sample.
+Create an IMPUTE2 sample file, as explained in this [section](#IMPUTE2). In order to generate such a list for the 1000 genome project phase 3 visit https://www.internationalgenome.org/data-portal/sample.
 
-**One important note**: the columns of sample file for population, group, and sex expected to be filled by the user. Contrast-Crossovers uses the values in the group column to differentiate between samples that are associated to distinct super-populations, and thus providing this information is required.
+**One important note**: the columns of SAMPLE file for population, group, and sex expected to be filled by the user. Contrast-Crossovers uses the values in the group column to differentiate between samples that are associated to distinct super-populations, and thus providing this information is required.
 
 ## Generate a reference panel ##
 
-The script `MAKE_REF_PANEL.py` creates reference panels for Contrast-Crossovers, using phased genotypes in VCF files. A reference panel of Contrast-Crossovers follows the structure of the IMPUTE2 format and consist of three files: samples, legend and haplotypes. However,the reference panel is stored as binary files for efficient storage and retrieval.
+The script `MAKE_REF_PANEL.py` creates reference panels for Contrast-Crossovers, using phased genotypes in VCF files. A reference panel of Contrast-Crossovers follows the structure of the IMPUTE2 format and consist of three files: sample, legend and haplotypes. However,the reference panel is stored as binary files for efficient storage and retrieval.
 
 We run the script with the following arguments and flags:
 
-`python3 MAKE_REF_PANEL.py EUR_panel.samples ALL.chr21.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz --mask 20160622.chr1.mask.fasta.gz`,
+`python3 MAKE_REF_PANEL.py EUR_panel.sample ALL.chr21.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz --mask 20160622.chr1.mask.fasta.gz`,
 
-where the first argument is the IMPUTE2 SAMPLE file. The second required argument is a VCF filename that correspond to a single chromosome. The third argument is an accessibility mask file in a gzipped FASTA format and is optional. Supplying an accessibility mask file will reduce false SNPs in regions of the genome that are less accessible to NGS methods. [GRCh38 genome accessibility masks for 1000 Genomes data](https://www.internationalgenome.org/announcements/genome-accessibility-masks/) are available from: [http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/working/20160622_genome_mask_GRCh38/](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/working/20160622_genome_mask_GRCh38/). 
+where the first argument is the IMPUTE2 sample file. The second required argument is a VCF filename that correspond to a single chromosome. The third argument is an accessibility mask file in a gzipped FASTA format and is optional. Supplying an accessibility mask file will reduce false SNPs in regions of the genome that are less accessible to NGS methods. [GRCh38 genome accessibility masks for 1000 Genomes data](https://www.internationalgenome.org/announcements/genome-accessibility-masks/) are available from: [http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/working/20160622_genome_mask_GRCh38/](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/working/20160622_genome_mask_GRCh38/).
 
 In addition, the following flags are supported:
 
@@ -147,9 +147,9 @@ It then builds a nested list that contains observed alleles at SNPs positions to
 
 We run the script with the following arguments and flags:
 
-`python3 MAKE_OBS_TAB.py SRR6676163.bam EUR_panel.chr21.legend.gz EUR_panel.chr21.samples.gz --min-bq 30 --min-mq 30 --max-depth 0 --handle-multiple-observations all`,
+`python3 MAKE_OBS_TAB.py SRR6676163.bam EUR_panel.chr21.legend.gz EUR_panel.chr21.sample.gz --min-bq 30 --min-mq 30 --max-depth 0 --handle-multiple-observations all`,
 
-where the first argument is the filename of the BAM file, containing reads mapped to a reference sequence. The second required argument is the filename of the legend file, which lists the SNPs positions. The third required argument is the filename of the samples file, which lists the reference samples and their associated population, group/superpopulation and sex. In addition, the following flags are supported:
+where the first argument is the filename of the BAM file, containing reads mapped to a reference sequence. The second required argument is the filename of the legend file, which lists the SNPs positions. The third required argument is the filename of the SAMPLE file, which lists the reference samples and their associated population, group/superpopulation and sex. In addition, the following flags are supported:
 
 | Optional argument  | Description |
 | --- | --- |
@@ -159,7 +159,7 @@ where the first argument is the filename of the BAM file, containing reads mappe
 | `--min-mq <INT>` | _Minimum mapping quaility for observations. Default value 30._ |
 | `--max-depth <FLOAT>` | _Maximum depth coverage to be considered (inclusive). Default value is 0, effectively removing the depth limit._ |
 | `--output-filename <FILENAME>` | _Output filename. The default filename is the same as the BAM filename, but with an extension of .chr_id.obs.p ._ |
-    
+
 
 * In order to use the script, the Python module Pysam (v0.15.4) must be installed. Pysam is a lightweight wrapper of the htslib C-API, allowing our script to read SAM/BAM files. For more information check [ pysam-developers / pysam ](https://github.com/pysam-developers/pysam) and also [pysam: htslib interface for python](https://pysam.readthedocs.io/en/latest/index.html).
 
@@ -171,7 +171,7 @@ at least three reads and gives the associated log-likelihood ratio (LLR) of unma
 
 As demonstration, we run the script with the following arguments and flags:
 
-`python CONTRAST_HAPLOTYPES.py  simulated.disomy.chr16.x0.100.NA12889A.HG00448A.obs.p.bz2 simulated.monosomy.chr16.x0.050.NA18644A.obs.p.bz2 chr16_EAS_EUR_panel.legend.gz chr16_EAS_EUR_panel.hap.gz EAS_EUR_panel.samples.gz EAS 0.7 EUR 0.3 --window-size 0 --min-reads 12 --max-reads 6 --compress bz2`,
+`python CONTRAST_HAPLOTYPES.py  simulated.disomy.chr16.x0.100.NA12889A.HG00448A.obs.p.bz2 simulated.monosomy.chr16.x0.050.NA18644A.obs.p.bz2 chr16_EAS_EUR_panel.legend.gz chr16_EAS_EUR_panel.hap.gz EAS_EUR_panel.sample.gz EAS 0.7 EUR 0.3 --window-size 0 --min-reads 12 --max-reads 6 --compress bz2`,
 
 where the first and second argument are filenames of observation tables for disomy and monosomy, respectively. The observation tables are created by MAKE_OBS_TAB and contain base observations at known SNP positions. The third argument is the filename of the reference panel legend, which lists the SNPs in our reference panel. The forth required argument is the filename of the reference panel haplotypes, which lists the haplotypes in our reference panel. The fifth required argument is the filename of the reference panel samples, which describes the ancestral group of the individuals consisting the reference panel. The rest of the non-optional arguments describe the ancestral makeup of the disomy. In general, the ancestral makeup is specified as follows:
 1. For non-admixtures the argument consists a single superpopulation, e.g., `EUR`.
@@ -227,7 +227,7 @@ To further demonstrate and evaluate Contrast-Crossovers and other methods, it ca
                              'For example, in order to simulate a monosomy case the observation tables should be given '
                              'as follows: \"python MIX_HAPLOIDS -s monosomy HAPLOID1_AFR.obs.p HAPLOID2_EUR.obs.p\". ')
 
-The script MIX_HAPLOIDS.py simulates an observation table of disomy and monosomy, based on mixtures of haploid sequences. 
+The script MIX_HAPLOIDS.py simulates an observation table of disomy and monosomy, based on mixtures of haploid sequences.
 We demonstrate the script with the following arguments and flags:
 
 `python3 MIX_HAPLOIDS.py HAPLOID1.obs.p HAPLOID2.obs.p HAPLOID3.obs.p --depth 0.05 --read-length 75 --scenarios monosomy disomy`,
@@ -241,21 +241,21 @@ where the three first arguments are the filenames of observation tables created 
 | `--scenarios <STR>` | _The simulation supports two scenarios disomy and monosomy. Default scenario is disomy. Giving a both scenarios, e.g. "disomy monosomy" would create a batch of simulations. In batch mode, the first observation table would be used to simulate monosomy._ |
 | `--output-filename <FILENAME>` | _Output filename. The default filename includes all the sample IDs associated with the given observation tables._ |
 | `--compress <gz/bz2/unc>` | _Output compressed via gzip, bzip2 or uncompressed. Default is uncompressed._ |
-|`--distant-admixture <FLOAT FLOAT>` | _Assume a distant admixture with a certain ancestry proportion, e.g, AFR 0.8 EUR 0.2. 
-In addition, the order of observation tables that are given as arguments is important; 
-Odd positions are associated with population 1, while even positions with population 2. 
-For example, in order to simulate a monosomy case the observation tables should be given 
+|`--distant-admixture <FLOAT FLOAT>` | _Assume a distant admixture with a certain ancestry proportion, e.g, AFR 0.8 EUR 0.2.
+In addition, the order of observation tables that are given as arguments is important;
+Odd positions are associated with population 1, while even positions with population 2.
+For example, in order to simulate a monosomy case the observation tables should be given
 as follows: "python MIX_HAPLOIDS -s monosomy HAPLOID1_AFR.obs.p HAPLOID2_EUR.obs.p_" |
 
 ## Create haploid-like observation table using phased genotypes from VCF files.
 
-The script EXTRACT_GENOTYPES.py simulates two observation tables of a haploid, using phased genotypes from VCF files. Each observation table includes SNP positions, "alleles from the same haplotype of a certain individual and their corresponding line number within the IMPUTE2 legend file. 
+The script EXTRACT_GENOTYPES.py simulates two observation tables of a haploid, using phased genotypes from VCF files. Each observation table includes SNP positions, "alleles from the same haplotype of a certain individual and their corresponding line number within the IMPUTE2 legend file.
 
 We run the script with the following arguments and flags:
 
 `python3 EXTRACT_GENOTYPES.py ALL.chr21.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz chr21_EUR_panel.legend chr21 HG00097`
 
-where the first argument is the filename of a VCF file, containing phased genotypes. The second required argument is the filename of the IMPUTE2 legend file, which lists the SNPs positions. The third and forth arguments are the chromosome ID and sample ID, respectively. 
+where the first argument is the filename of a VCF file, containing phased genotypes. The second required argument is the filename of the IMPUTE2 legend file, which lists the SNPs positions. The third and forth arguments are the chromosome ID and sample ID, respectively.
 
 ## Create haploid-like observation table using phased genotypes from IMPUTE2 files.
 
@@ -263,9 +263,9 @@ The script IMPUTE2OBS.py simulates two observation tables of a haploid, using ph
 
 We run the script with the following arguments and flags:
 
-`python IMPUTE2OBS.py chr21_EUR_panel.legend chr21_EUR_panel.hap chr21_EUR_panel.samples chr21 HG00097`
+`python IMPUTE2OBS.py chr21_EUR_panel.legend chr21_EUR_panel.hap chr21_EUR_panel.sample chr21 HG00097`
 
-where the first argument is the filename of a legend file, describing the SNPs. The second argument is the filename of the IMPUTE2 haplotypes file, which contains a table of haplotypes. The thirds argument is the filename of the IMPUTE2 samples file, which lists the individuals. The forth and fifth arguments are the chromosome ID and sample ID, respectively. 
+where the first argument is the filename of a legend file, describing the SNPs. The second argument is the filename of the IMPUTE2 haplotypes file, which contains a table of haplotypes. The thirds argument is the filename of the IMPUTE2 sample file, which lists the individuals. The forth and fifth arguments are the chromosome ID and sample ID, respectively.
 
 # Balanced ROC Analysis #
 <a name="ROC_analysis"/>
@@ -280,7 +280,7 @@ The genome is divided into bins. For each simulated data, the mean LLR and the
 standard deviation for a bin are calculated. A positive (negative) prediction
 is made if the bounds of the confidence interval lie on the positive (negative)
 side of the number line. In each bin, the z-score is varied and the balanced
-positive and negative rates are calculated for each value it takes. 
+positive and negative rates are calculated for each value it takes.
 
 We run the script with the following arguments and flags:
 
@@ -327,15 +327,15 @@ The SAMPLE file describes the individuals. The minimal SAMPLE file corresponding
 
 | sample | population | group | sex |
 | :---: | :---: | :---: | :---: |
-| CEU1 | CEU | EUR | 1 |   
-| CEU2 | CEU | EUR | 2 |   
-| GBR1 | GBR | EUR | 2 |   
+| CEU1 | CEU | EUR | 1 |
+| CEU2 | CEU | EUR | 2 |
+| GBR1 | GBR | EUR | 2 |
 | YRI1 | YRI | AFR | 2 |
 
 It is SPACE delimited. The first line is a header line that describe the content of the file. Then, each line corresponds to a single individual. The first four columns are:
 
   - Individual ID
-  - Population  
+  - Population
   - Superpopulation
   - Sex (1 for male, 2 for female)
 
@@ -374,7 +374,7 @@ This file is SPACE delimited. Each line corresponds to a single SNP. Each succes
 # Generating IMPUTE2 reference panels from a VCF file #
 <a name="VCF2IMPUTE"/>
 
-Here we create an IMPUTE2 reference panel using bcftools. First, create a file containing a list of individuals to include in subsequent analysis. Each individual ID (as defined in the VCF header line) should be included on a separate line. In order to generate such a list for the 1000 genome project phase 1\3 visit [https://www.internationalgenome.org/data-portal/sample](https://www.internationalgenome.org/data-portal/sample). 
+Here we create an IMPUTE2 reference panel using bcftools. First, create a file containing a list of individuals to include in subsequent analysis. Each individual ID (as defined in the VCF header line) should be included on a separate line. In order to generate such a list for the 1000 genome project phase 1\3 visit [https://www.internationalgenome.org/data-portal/sample](https://www.internationalgenome.org/data-portal/sample).
 
 The next step is to convert the reference panel VCF to BCF format:
 
