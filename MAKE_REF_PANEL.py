@@ -11,7 +11,7 @@ Daniel Ariad (daniel@ariad.org)
 AUG 27, 2022
 """
 
-import sys, os, time, random, argparse, re, pickle, gzip, bz2, collections, itertools, operator
+import sys, os, time, argparse, pickle, gzip, bz2, collections, itertools, operator
 
 leg_tuple = collections.namedtuple('leg_tuple', ('chr_id', 'pos', 'ref', 'alt')) #Encodes the rows of the legend table
 sam_tuple = collections.namedtuple('sam_tuple', ('sample_id', 'group1', 'group2', 'sex')) #Encodes the rows of the samples table
@@ -33,45 +33,62 @@ except ModuleNotFoundError:
         print('Error: Either the module cyvcf2 or pysam is required. Use cyvcf2 for faster performance.')
         exit(1)
 
-def add_prefix(x):
-    """ Adds the suffix 'chr' when missing. """
-    return 'chr' + x.removeprefix('chr')
-
-
-def read_impute2(filename,**kwargs):
+def read_impute2(impute2_leg_filename,impute2_hap_filename,impute2_samp_filename,samp_filename):
     """ Reads an IMPUTE2 file format (LEGEND/HAPLOTYPE/SAMPLE) and builds a list
         of lists, containing the dataset. """
 
-    filetype = kwargs.get('filetype', None)
-
-    def leg_format(line):
-        rs_id, pos, ref, alt = line.strip().split()
-        return leg_tuple(add_prefix(rs_id.split(':',1)[0]), int(pos), ref, alt)
-
-    def sam_format(line):
-          sample_id, group1, group2, sex = line.strip().split(' ')
-          return sam_tuple(sample_id, group1, group2, int(sex))
-
-    with (gzip.open(filename,'rt') if filename[-3:]=='.gz' else open(filename, 'r')) as impute2_in:
-        if filetype == 'leg':
-            impute2_in.readline()   # Bite off the header
-            result = tuple(map(leg_format,impute2_in))
-
-        elif filetype == 'hap':
-            firstline = impute2_in.readline()   # Get first line
-            a0 = int(firstline.replace(' ', ''), 2)
-            a1 = (int(line.replace(' ', ''), 2) for line in impute2_in)
-            hap_tab = (a0, *a1)
-            number_of_haplotypes = len(firstline.strip().split())
-            result = hap_tab, number_of_haplotypes
-
-        elif filetype == 'sam':
-            impute2_in.readline()   # Bite off the header
-            result = tuple(map(sam_format,impute2_in))
-
-        else:
-            result = tuple(line.strip().split() for line in impute2_in)
-
+    ### LEGEND ###
+    
+    LEGEND = []    
+    Open = {'bz2': bz2.open, 'gz': gzip.open}.get(impute2_leg_filename.rsplit('.',1).pop(), open)
+    with Open(impute2_leg_filename,'r') as impute2_in:
+        impute2_in.readline()   # Bite off the header
+        for line in impute2_in:
+            rs_id, pos, ref, alt = line.strip().split()
+            LEGEND.append(leg_tuple(rs_id.split(':',1)[0], int(pos), ref, alt))
+            
+    ### SAMPLE ###
+    Open = {'bz2': bz2.open, 'gz': gzip.open}.get(impute2_samp_filename.rsplit('.',1).pop(), open)
+    with Open(impute2_samp_filename,'r') as impute2_in:
+        impute2_in.readline()   # Bite off the header
+        SAMPLES_IN_VCF = {line.strip().split(' ')[0] for line in impute2_in}
+    
+    
+    IMPUTE2_SAMPLE = []
+    Open = {'bz2': bz2.open, 'gz': gzip.open}.get(samp_filename.rsplit('.',1).pop(), open)
+    with Open(samp_filename,'r') as impute2_in:
+        impute2_in.readline()   # Bite off the header
+        for line in impute2_in:
+            sample_id, group1, group2, sex = line.strip().split(' ')
+            if sample_id in SAMPLES_IN_VCF:
+                IMPUTE2_SAMPLE.append(sam_tuple(sample_id, group1, group2, int(sex)))
+    
+    SAMPLE = {group2: tuple(samples) 
+                  for group2, samples in itertools.groupby(IMPUTE2_SAMPLE, key=operator.attrgetter('group2'))} #For each group2 gives all the associated sample IDs.    
+        
+    ### HAPLOTYPES ###
+    
+    GROUP2 = tuple(s.group2 for s in IMPUTE2_SAMPLE for i in range(2)) 
+    HAPLOTYPES = {group2: [] for group2 in SAMPLE}
+    
+    Open = {'bz2': bz2.open, 'gz': gzip.open}.get(impute2_hap_filename.rsplit('.',1).pop(), open)
+    with Open(impute2_hap_filename,'r') as impute2_in:
+        for line in impute2_in:
+            
+            cache = {group2: [] for group2 in SAMPLE}
+            for group2, allele in zip(GROUP2,line.replace(' ','')):
+                cache[group2].append(allele=='1')
+            
+            for group2, alleles in cache.items():
+                binary = sum(v<<i for i, v in enumerate(reversed(alleles)) if v)
+                HAPLOTYPES[group2].append(binary)
+    
+    HAPLOTYPES = {group2: tuple(hap) for group2, hap in HAPLOTYPES.items()}
+       
+    HAP_length = {group2: 2*len(samples) for group2, samples in SAMPLE.items()} ### The number of samples that are associated with a particular group2/superpopulation.         
+   
+    result = tuple(LEGEND), HAPLOTYPES, HAP_length, SAMPLE
+        
     return result
 
 def load_mask_tab_fasta_gz(mask_filename):
@@ -140,20 +157,20 @@ def build_ref_panel_via_bcftools(samp_filename,vcf_filename,mask_filename):
     
     try:
         for cmd in pipeline:
-            print('--- Executing:',cmd)
+            print('--- Executing:'," ".join(cmd.split()))
             stream = os.popen(cmd)
             print('--- Output:',stream.read())
                       
-        leg_tab = read_impute2(impute2_leg_filename,filetype='leg')
-        hap_tab, number_of_haplotypes = read_impute2(impute2_hap_filename,filetype='hap')
-        sam_tab = read_impute2(samp_filename,filetype='sam')
+        LEGEND, HAPLOTYPES, HAP_length, SAMPLE = read_impute2(impute2_leg_filename,impute2_hap_filename,impute2_samp_filename,samp_filename)
         
         if mask_filename!='':
             mask = load_mask_tab_fasta_gz(mask_filename)  
-            skipped_SNPs=len(leg_tab)
-            hap_tab = tuple(hap for leg, hap in zip(leg_tab,hap_tab) if mask[leg.pos-1]=='P')
-            leg_tab = tuple(leg for leg in leg_tab if mask[leg.pos-1]=='P')
-            skipped_SNPs-=len(leg_tab)
+            skipped_SNPs=len(LEGEND)
+            for group2 in HAPLOTYPES:
+                HAPLOTYPES[group2] = [hap for leg, hap in zip(LEGEND,HAPLOTYPES[group2]) 
+                                           if mask[leg.pos-1]=='P']
+            LEGEND = tuple(leg for leg in LEGEND if mask[leg.pos-1]=='P')
+            skipped_SNPs -= len(LEGEND)
             print(f'--- Based on the genome accessibility mask, {skipped_SNPs:d} SNP records were skipped.')
 
             
@@ -166,7 +183,7 @@ def build_ref_panel_via_bcftools(samp_filename,vcf_filename,mask_filename):
     
     time1 = time.time()
     print('Done building the reference panel in %.3f sec.' % (time1-time0))
-    return leg_tab, (hap_tab, number_of_haplotypes), sam_tab
+    return LEGEND, (HAPLOTYPES, HAP_length), SAMPLE
 
 def build_ref_panel_via_pysam(samp_filename,vcf_filename,mask_filename):
     """ Builds a reference panel via pysam with similar structure to the IMPUTE2 format.
@@ -182,41 +199,54 @@ def build_ref_panel_via_pysam(samp_filename,vcf_filename,mask_filename):
     print(f'--- VCF Filename: {vcf_filename:s}')
     print(f'--- VCF description: {vcf_in.description:s}') ### Based on the VCF header, prints a description of the VCF file.
 
-    SAMPLES = parse_samples(samp_filename)
-    SAM = [s.sample_id for s in SAMPLES if s.sample_id in vcf_in.header.samples]
+    IMPUTE2_SAMPLE = parse_samples(samp_filename)
+    sampleIDs = [s.sample_id for s in IMPUTE2_SAMPLE if s.sample_id in vcf_in.header.samples] #All sample IDs that exist in both the SAMPLE file and the VCF file.
+    
+    SAMPLES = {group2: tuple(samples) 
+               for group2, samples in itertools.groupby(IMPUTE2_SAMPLE, key=operator.attrgetter('group2'))} #For each group2 gives all the associated sample IDs.    
+    
+    
+    HAP_length = {group2: 2*len(samples) for group2, samples in SAMPLES.items()} ### The number of samples that are associated with a particular group2/superpopulation.
+            
+    get_samples = {group2: operator.itemgetter(*(s.sample_id for s in SAMPLES[group2])) 
+                       for group2 in SAMPLES}
+    
+    vcf_in.subset_samples(sampleIDs) ### Read only a subset of samples to reduce processing time and memory. Must be called prior to retrieving records.
 
-    lenSAM = len(SAM) ### The number of samples that are also included in the VCF.
-    get_samples = operator.itemgetter(*SAM)
-
-
-    vcf_in.subset_samples(SAM) ### Read only a subset of samples to reduce processing time and memory. Must be called prior to retrieving records.
-
-    HAPLOTYPES = []
+    HAPLOTYPES = collections.defaultdict(list)
     LEGEND = []
     skipped_SNPs = 0
 
     for record in vcf_in.fetch():
-        if record.info.get('VT')!=('SNP',) and not (record.alleles[0] in ACTG and record.alleles[1] in ACTG): continue
-        phased = all((record.samples[sample].phased for sample in SAM))
-        if not phased: continue ### Only encode phased SNPs
+        if len(record.alleles)==2 and not (record.alleles[0] in ACTG and record.alleles[1] in ACTG): 
+            continue ### Keep only records of biallelic SNPs.
+        
+        if not all((info.phased for info in record.samples.values())): 
+            continue ### Only encode phased SNPs
 
-        ALLELES = tuple(itertools.chain.from_iterable((s.allele_indices for s in get_samples(record.samples))))
-        an = ALLELES.count(1)
-        if an==2*lenSAM or an==0: continue ### Only encode SNPs with a non-zero minor allele count.
+        an = sum(sum(info.allele_indices) for info in record.samples.values())
+        if an==2*len(record.samples) or an==0: continue ### Only encode SNPs with a non-zero minor allele count.
+        
         if mask!=None and mask[record.pos-1]!='P': ### Record start position on chrom/contig is 1-based inclusive.
             skipped_SNPs +=1
             continue ### Include only SNPs in regions accessible to NGS, according to accessibility masks.
 
-        LEGEND.append(leg_tuple(add_prefix(record.contig), record.pos, *record.alleles)) ### Add the record to the legend list. pos is 1-based inclusive!
-        binary = sum(v<<i for i, v in enumerate(reversed(ALLELES)) if v) ### Encode the alleles as bits
-        HAPLOTYPES.append(binary) ### Add the record to the haplotypes list
+        LEGEND.append(leg_tuple(record.contig, record.pos, *record.alleles)) ### Add the record to the legend list. pos is 1-based inclusive!
+        
+        for group2, get in get_samples.items():    
+            ALLELES = [allele for info in get(record.samples) for allele in info.allele_indices]
+            binary = sum(v<<i for i, v in enumerate(reversed(ALLELES)) if v) ### Encode the alleles as bits
+            HAPLOTYPES[group2].append(binary) ### Add the record to the haplotypes list
+    
+    HAPLOTYPES = {k:tuple(v) for k,v in HAPLOTYPES.items()} #Transfer deafultdict into dict and lists into tuples.        
+    
     time1 = time.time()
     if mask!=None:
         print(f'--- Based on the genome accessibility mask, {skipped_SNPs:d} SNP records were skipped.')
     print(f'--- The reference panel contains {len(LEGEND):d} SNPs.')
     print('Done building the reference panel in %.3f sec.' % (time1-time0))
 
-    result = tuple(LEGEND), (tuple(HAPLOTYPES), 2*lenSAM), SAMPLES
+    result = tuple(LEGEND), (HAPLOTYPES, HAP_length), SAMPLES
 
     return result
 
@@ -226,49 +256,68 @@ def build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask_filename):
 
     time0 = time.time()
     print(f'--- Samples Filename: {samp_filename:s}')
-    reverse_haplotypes = operator.itemgetter(1,0)
+    print(f'--- VCF Filename: {vcf_filename:s}')
+
+    get_alleles = operator.itemgetter(0,1)
     ACTG = set('ACTG')
     mask = load_mask_tab_fasta_gz(mask_filename) if mask_filename!='' else None
 
     vcf_in = cyvcf2.VCF(vcf_filename,'r', strict_gt=True)  # auto-detect input format
-
-    print(f'--- VCF Filename: {vcf_filename:s}')
-
+    
     assert len(vcf_in.seqnames)==1, 'All records in the VCF must correspond to a single chromosome.'
 
-    SAMPLES = parse_samples(samp_filename)
+    IMPUTE2_SAMPLE = parse_samples(samp_filename)
+    sampleIDs = [s.sample_id for s in IMPUTE2_SAMPLE if s.sample_id in vcf_in.samples] #All sample IDs that exist in both the SAMPLE file and the VCF file.
+    
+    len_sampleIDs = len(sampleIDs)
+    
+    SAMPLES = {group2: tuple(samples) 
+               for group2, samples in itertools.groupby(IMPUTE2_SAMPLE, key=operator.attrgetter('group2'))} #For each group2 gives all the associated sample IDs.    
+    
+    
+    HAP_length = {group2: 2*len(samples) for group2, samples in SAMPLES.items()} ### The number of samples that are associated with a particular group2/superpopulation.
+            
 
-    SAM = [s.sample_id for s in SAMPLES if s.sample_id in vcf_in.samples]
-    lenSAM = len(SAM) ### The number of samples that are also included in the VCF.
-    vcf_in.set_samples(SAM) ### Read only a subset of samples to reduce processing time and memory. Must be called prior to retrieving records.
 
+    vcf_in.set_samples(sampleIDs) ### Read only a subset of samples to reduce processing time and memory. Must be called prior to retrieving records.
 
-    X = [s for s in vcf_in.samples if s in SAM]
-    reversed_order = operator.itemgetter(*(X.index(s) for s in reversed(SAM))) #Returns the reversed order of samples with respect to the list SAMPLES.
-
-    HAPLOTYPES = []
+    get_samples = {group2: operator.itemgetter(*(vcf_in.samples.index(s.sample_id) for s in SAMPLES[group2])) 
+                       for group2 in SAMPLES}
+    
+    HAPLOTYPES = collections.defaultdict(list)
     LEGEND = []
     skipped_SNPs = 0
 
     for record in vcf_in():
-        if record.INFO.get('VT')!='SNP' and not (record.REF in ACTG and record.ALT[0] in ACTG): continue
-        if not record.gt_phases.all(): continue ### Only encode phased SNPs
-        if record.num_unknown>0 or record.num_hom_ref==lenSAM or record.num_hom_alt==lenSAM: continue ### Only encode SNPs with a non-zero minor allele count.
+        if  not (record.is_snp and len(record.ALT)==1 and record.REF in ACTG and record.ALT[0] in ACTG): 
+            continue  ### Keep only records of biallelic SNPs
+        
+        if not record.gt_phases.all(): 
+            continue ### Only encode phased SNPs
+        
+        if record.num_unknown>0 or record.num_hom_ref==len_sampleIDs or record.num_hom_alt==len_sampleIDs: 
+            continue ### Only encode SNPs with a non-zero minor allele count.
+        
         if mask!=None and mask[record.POS-1]!='P': # According to description of the VCF format, positions are 1-based.
             skipped_SNPs +=1
             continue ### Include only SNPs in regions accessible to NGS, according to accessibility masks.
 
-        LEGEND.append(leg_tuple(add_prefix(record.CHROM), record.POS, record.REF, *record.ALT)) ### Add the record to the legend list
-        alleles = itertools.chain.from_iterable(map(reverse_haplotypes,reversed_order(record.genotypes)))
-        binary = sum(v<<i for i, v in enumerate(alleles) if v) ### Encode the alleles as bits
-        HAPLOTYPES.append(binary) ### Add the record to the haplotypes list
+        LEGEND.append(leg_tuple(record.CHROM, record.POS, record.REF, *record.ALT)) ### Add the record to the legend list
+        
+        for group2, get_group2 in get_samples.items(): 
+            ALLELES = [*itertools.chain.from_iterable(map(get_alleles,get_group2(record.genotypes)))]
+            binary = sum(v<<i for i, v in enumerate(reversed(ALLELES)) if v) ### Encode the alleles as bits
+            HAPLOTYPES[group2].append(binary) ### Add the record to the haplotypes list
+    
+    HAPLOTYPES = {k:tuple(v) for k,v in HAPLOTYPES.items()} #Transfer deafultdict into dict and lists into tuples.        
+    
     time1 = time.time()
     if mask!=None:
         print(f'--- Based on the genome accessibility mask, {skipped_SNPs:d} SNP records were skipped.')
     print(f'--- The reference panel contains {len(LEGEND):d} SNPs.')
     print('Done building the reference panel in %.3f sec.' % (time1-time0))
 
-    result = tuple(LEGEND), (tuple(HAPLOTYPES), 2*lenSAM), SAMPLES
+    result = tuple(LEGEND), (HAPLOTYPES, HAP_length), SAMPLES
 
     return result
 
@@ -282,8 +331,9 @@ def save_ref_panel(samp_filename, legend, haplotypes, samples, output_dir):
     with gzip.open(path+base_filename+'.legend.gz','wb') as f:
         pickle.dump(legend,f)
     with gzip.open(path+base_filename+'.hap.gz','wb') as f:
-        pickle.dump(haplotypes,f)
-    with gzip.open(path+strip_samp_filename+'.samples.gz','wb') as f:
+        pickle.dump(haplotypes[0],f)
+        pickle.dump(haplotypes[1],f)
+    with gzip.open(path+strip_samp_filename+'.sample.gz','wb') as f:
         pickle.dump(samples,f)
     time1 = time.time()
     print('Done saving the reference panel in %.3f sec.' % (time1-time0))
@@ -308,7 +358,40 @@ def main(samp_filename,vcf_filename,mask,output_directory,force_module):
     save_ref_panel(samp_filename, legend, haplotypes, samples, output_directory)
     return 0
 
+def test(samp_filename,vcf_filename,mask):
+    """ This function creates a reference panel via the modules
+        pysam, cyvcf2 and bcftools and checkes that they agree
+        with each other."""
 
+    global pysam; import pysam    
+    global cyvcf2; import cyvcf2
+    
+    legend = {}
+    haplotypes = {}
+    samples = {}
+    
+        
+    print('--- Creating the reference panel via the module pysam.')
+    legend['pysam'], haplotypes['pysam'], samples['pysam'] = build_ref_panel_via_pysam(samp_filename,vcf_filename,mask)
+    
+    print('--- Creating the reference panel via the module cyvcf2.')
+    legend['cyvcf2'], haplotypes['cyvcf2'], samples['cyvcf2'] = build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask)
+        
+    print('--- Creating the reference panel via bcftools.')
+    legend['bcftools'], haplotypes['bcftools'], samples['bcftools'] = build_ref_panel_via_bcftools(samp_filename,vcf_filename,mask)
+    
+    print("legend['pysam']==legend['cyvcf2']:", legend['pysam']==legend['cyvcf2'])
+    print("legend['pysam']==legend['bcftools']:", legend['pysam']==legend['bcftools'])
+    print("legend['cyvcf2']==legend['bcftools']:", legend['cyvcf2']==legend['bcftools'])
+    print("haplotypes['pysam']==haplotypes['cyvcf2']:", haplotypes['pysam']==haplotypes['cyvcf2'])
+    print("haplotypes['pysam']==haplotypes['bcftools']:", haplotypes['pysam']==haplotypes['bcftools'])
+    print("haplotypes['cyvcf2']==haplotypes['bcftools']:", haplotypes['cyvcf2']==haplotypes['bcftools'])
+    print("samples['pysam']==samples['cyvcf2']:", samples['pysam']==samples['cyvcf2'])
+    print("samples['pysam']==samples['bcftools']:", samples['pysam']==samples['bcftools'])
+    print("samples['cyvcf2']==samples['bcftools']:", samples['cyvcf2']==samples['bcftools'])
+
+    
+    return 0
 
 if __name__ == "__main__":
 
@@ -316,7 +399,7 @@ if __name__ == "__main__":
         description='creates reference panels for LD-PGTA, using phased genotypes in VCF files. '
         'The reference panels of LD-PGTA have a similar structure to the IMPUTE2 format. ')
     parser.add_argument('samp_filename', metavar='samples_filename', type=str,
-                    help='IMPUTE2 samples file')
+                    help='IMPUTE2 sample file')
     parser.add_argument('vcf_filename', metavar='vcf_filename', type=str,
                         help='IMPUTE2 legend file')
     parser.add_argument('-m','--mask', type=str,metavar='GZIPPED_FASTA_FILENAME', default='',
@@ -331,12 +414,24 @@ if __name__ == "__main__":
 else:
     print('The module MAKE_REF_PANEL was imported.')
 
+
+#samp_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/samples_per_panel/EAS_EUR_panel.sample'
+#vcf_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/1000_genomes_30x_on_GRCh38_3202_samples/CCDG_14151_B01_GRM_WGS_2020-08-05_chr21.filtered.shapeit2-duohmm-phased.vcf.gz'
+#test(samp_filename,vcf_filename,mask='')
+
 """
 if __name__ == "__main__":
-    for SP in 'EUR','EAS','SAS','AFR','AMR','AFR_EUR','EAS_EUR','SAS_EUR','EAS_SAS':
+    from multiprocessing import Process
+    process = 32
+    proc = []
+    force_module = ''
+    for SP in {'EUR','EAS','SAS','AFR','AMR','EAS_EUR','EUR_SAS','EAS_SAS',
+               'AFR_EUR','AFR_AMR','AMR_EUR','AMR_EAS','AMR_SAS','AFR_SAS',
+               'AFR_EAS','AMR_EUR_SAS','EAS_EUR_SAS','AMR_EAS_SAS','AFR_AMR_EUR',
+               'AFR_AMR_SAS','AFR_AMR_EAS'}:
         #SP = 'ALL'
         print(SP)
-        samp_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/samples_per_panel/{SP:s}_panel.samples'
+        samp_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/samples_per_panel/{SP:s}_panel.sample'
         output_directory = f'/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/{SP:s}_panel'
         for i in ['X',*range(22,0,-1)]:
             print(i)
@@ -345,18 +440,25 @@ if __name__ == "__main__":
             else:
                 vcf_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/1000_genomes_30x_on_GRCh38_3202_samples/CCDG_14151_B01_GRM_WGS_2020-08-05_chr{i}.filtered.shapeit2-duohmm-phased.vcf.gz'
             mask_filename = ''# f'/home/ariad/Dropbox/postdoc_JHU/Project1_LD-PGTA/LD-PGTA_ecosystem/mask/20160622.chr{i}.mask.fasta.gz'
-            legend, haplotypes, samples = build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask_filename)
-            save_ref_panel(samp_filename, legend, haplotypes, samples, output_directory)
+            
+            #main(samp_filename,vcf_filename,mask_filename,output_directory,force_module)
+            try:
+                p = Process(target=main,args=(samp_filename,vcf_filename,mask_filename,output_directory,force_module))
+                p.start()
+                proc.append(p)
+                
+            except Exception as error:
+                print('caution: a process failed!')
+                print(error)
+            
+            while( len(proc)==process ):
+                for p in proc:
+                    if not p.is_alive():
+                        p.close()
+                        proc.remove(p)
+    for p in proc:
+        p.join()            
+            
     
-            #impute2_leg_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project1_LD-PGTA/LD-PGTA_ecosystem/build_reference_panel/{SP:s}_panel.hg38.BCFtools/chr{i}_{SP:s}_panel.legend.gz'
-            #impute2_hap_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project1_LD-PGTA/LD-PGTA_ecosystem/build_reference_panel/{SP:s}_panel.hg38.BCFtools/chr{i}_{SP:s}_panel.hap.gz'
     
-            #impute2_leg = read_impute2(impute2_leg_filename,filetype='leg')
-            #impute2_hap = read_impute2(impute2_hap_filename,filetype='hap')
-            #impute2_sam = read_impute2(samp_filename,filetype='sam')
-            #save_ref_panel(samp_filename, impute2_leg, impute2_hap, impute2_sam)
-    
-    
-            #print(test_module(impute2_leg_filename, impute2_hap_filename, legend, haplotypes))
-
 """

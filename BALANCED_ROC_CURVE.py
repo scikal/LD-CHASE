@@ -4,9 +4,8 @@
 BALANCED_ROC_CURVES
 
 Based on simulated data that was created by MIX_HAPLOIDS and analyzed by
-DETECT_CROSSOVERS, Balanced ROC (Receiver Operating Characteristic) curves
-for predicting BPH (both parental homologs) and SPH (single parental homologs)
-are created.
+CONTRAST_HAPLOTYPES, Balanced ROC (Receiver Operating Characteristic) curves
+for predicting regions with un/mathced haplotypes are created.
 
 
 The balanced ROC curve is a plot of BTPR (Balanced True Positive Rate) vs. BFPR
@@ -98,7 +97,7 @@ def show_info(info):
 
     if S.get('LLRs_per_chromosome',None):
         L = S['LLRs_per_chromosome']
-        print("--- Chromosome-wide LLR between BPH and SPH ----")
+        print("--- Chromosome-wide LLR between unmathced and matched haplotypes ----")
         print(f"Mean LLR: {L['mean_of_mean']:.3f}, Standard error of the mean LLR: {L['std_of_mean']:.3f}")
         print(f"Fraction of genomic windows with a negative LLR: {L['fraction_of_negative_LLRs']:.3f}")
         
@@ -227,7 +226,7 @@ def prediction_rates(data, thresholds, positive = 'both'):
     return prediction_rates
 
 def main(work_dir,output_filename,number_of_bins,criteria,compress):
-    """ Creates Balanced ROC curves for predicting BPH and SPH. """
+    """ Creates Balanced ROC curves for predicting unmatched and matched haplotypes. """
     
     assert os.path.isdir(work_dir), 'The path to the directory that contains simulated data does not exist.'
     Z = [i/33 for i in [*range(-1800,-300,300)]+[*range(-300,300)]+[*range(300,1800,300)]]
@@ -247,12 +246,9 @@ def main(work_dir,output_filename,number_of_bins,criteria,compress):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
     description='Based on simulated data that was created by MIX_HAPLOIDS and analyzed by'
-                'DETECT_CROSSOVERS, Balanced ROC curves for predicting aneuploidy are created as the z-score varies.')
+                'CONTRAST_HAPLOTYPES, Balanced ROC curves for predicting un/matched haplotypes are created as the z-score varies.')
     parser.add_argument('path_to_simulated_data', type=str, metavar='PATH_TO_SIMULATED_DATA', 
                         help='Path of a directory that contains LLR files with simulated scenarios.')
-    ###parser.add_argument('-s', '--scenarios', type=str, nargs='+',
-    ###                    metavar='BPH/SPH/disomy/monosomy', default='BPH SPH', choices=['BPH','SPH','disomy','monosomy'],
-    ###                    help="Two simulated scenarios for which a balanced ROC curve would be created, e.g., BPH SPH.")
     parser.add_argument('output_filename', type=str, metavar='OUTPUT_FILENAME',
                         help='The output filename.')
     parser.add_argument('-n', '--number-of-bins', type=int, metavar='INT',  default='15',

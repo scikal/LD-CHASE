@@ -224,7 +224,7 @@ if __name__ == "__main__":
                              'In addition, the order of observation tables that are given as arguments is important; '
                              'Odd positions are associated with population 1, while even positions with population 2. '
                              'For example, in order to simulate a monosomy case the observation tables should be given '
-                             'as follows: \"python MIX_HAPLOIDS -s monosomy HAPLOID1_AFR.obs.p HAPLOID2_EUR.obs.p\". ')
+                             'as follows: \"python MIX_HAPLOIDS -s monosomy -a 0.8 0.2 HAPLOID1_AFR.obs.p HAPLOID2_EUR.obs.p\". ')
 
     MixHaploids(**vars(parser.parse_args()))
     sys.exit(0)
