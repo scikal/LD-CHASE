@@ -3,8 +3,8 @@
 """
 CONTRAST_HAPLOTYPES
 
-Given sparse aligned sequences from a monosomy and a disomy, the chromosome is 
-divided into genomic windows and likelihoods of matched and unmathced 
+Given sparse aligned sequences from a monosomy and a disomy, the chromosome is
+divided into genomic windows and likelihoods of matched and unmathced
 haplotypes are calculated for each genomic window.
 
 Daniel Ariad (daniel@ariad.org)
@@ -24,20 +24,25 @@ from statistics import mean, variance, pstdev
 from math import comb, log
 
 leg_tuple = collections.namedtuple('leg_tuple', ('chr_id', 'pos', 'ref', 'alt')) #Encodes the rows of the legend table
-sam_tuple = collections.namedtuple('sam_tuple', ('sample_id', 'group1', 'group2', 'sex')) #Encodes the rows of the samples table
 obs_tuple = collections.namedtuple('obs_tuple', ('pos', 'read_id', 'base')) #Encodes the rows of the observations table
 comb_tuple = collections.namedtuple('comb_tuple', ('ref','alt','hap'))
 
 ### Getting a function to count non-zero bits in positive integer.
-try:
-    if platform.python_implementation()=='PyPy':
-        from POPCOUNTS import get_popcount
-        popcount = get_popcount(64)
-    else:
-        from gmpy2 import popcount
-except Exception as err: 
-    print(err)
-    popcount = lambda x: bin(x).count('1')
+class popcount_lk:
+    """ Creates an instance for calculating the population count of
+        bitstring, based on a lookup table of 8 bits. """
+
+    def __init__(self):
+        """ Creates a large lookup table of the Hamming weight of every 8 bit integer. """
+        self.lookup_table = bytes.maketrans(bytes(range(1<<8)),bytes((bin(i).count('1') for i in range(1<<8))))
+        self.byteorder = sys.byteorder
+
+    def __call__(self,x):
+        """ Breaks x, which is a python integer type, into chuncks of 8 bits.
+        Calls the lookup table to get the population count of each chunck and returns
+        the aggregated population count. """
+
+        return sum(x.to_bytes((x.bit_length()>>3)+1,self.byteorder).translate(self.lookup_table))
 
 def mean_and_var(x):
     """ Calculates the mean and variance. """
@@ -57,23 +62,14 @@ def mean_and_std_of_mean_of_rnd_var(A):
     """ Calculates the mean and population standard deviation of the mean of random variables.
         Each row of A represents a random variable, with observations in the columns."""
     if type(A)==dict:
-        A = tuple(tuple(i) for i in A.values()) 
-    
+        A = tuple(tuple(i) for i in A.values())
+
     M, N = len(A), len(A[0])
     mu = sum(sum(likelihoods_in_window)/N for likelihoods_in_window in A)
     arg = ((sum(sampled_likelihoods) - mu)**2 for sampled_likelihoods in zip(*A))
     std = (sum(arg) / (N - 1))**.5 / M
     mean = mu / M
     return mean, std
-
-### DEPRECATED. ###
-#def summarize(M,V):
-#    """ Calculates chromosome-wide statistics of the LLRs """
-#    result =  {'mean': mean(M),
-#               'std_of_mean': sum(V)**.5/len(V),  #The standard deviation is calculated according to the Bienaymé formula.
-#               'fraction_of_negative_LLRs': [i<0 for i in M].count(1)/len(M)}
-#    return result
-
 
 def LLR(y,x):
     """ Calculates the logarithm of y over x and deals with edge cases. """
@@ -94,59 +90,59 @@ def invert(x,n):
     return  x ^ ((1 << n) - 1)
 
 class supporting_dictionaries:
-    """ This class provides dictionaries that were created by various 
+    """ This class provides dictionaries that were created by various
         intersections and unions of the observations table with the reference panel. """
-    
+
     def __init__(self,  obs_tab, leg_tab, hap_tab_per_group, number_of_haplotypes_per_group, ancestral_makeup, min_HF):
-        
+
         self.number_of_haplotypes_per_group = number_of_haplotypes_per_group
         self.min_HF = min_HF
-        
+
         if type(ancestral_makeup)==dict:
             self.ancestral_makeup = {group2: ancestral_makeup[group2] for group2 in hap_tab_per_group}
         else:
             self.ancestral_makeup = {group2: 1/len(ancestral_makeup) for group2 in hap_tab_per_group}
-                
-        self.leg_dict = {l.pos: (l.ref,l.alt) for l in leg_tab} ### Lists chromosome positions of SNPs and gives a tuple of reference and alternative alleles. 
+
+        self.leg_dict = {l.pos: (l.ref,l.alt) for l in leg_tab} ### Lists chromosome positions of SNPs and gives a tuple of reference and alternative alleles.
         self.reads = self.build_reads_dict(obs_tab, self.leg_dict)
         self.overlaps = self.build_overlaps_dict(obs_tab, self.leg_dict)
         self.positions = (*self.overlaps.keys(),) ### The intersections of positions within the observation table and the reference panel.
         self.hap_tab_per_group = self.build_hap_tab_per_group(hap_tab_per_group, self.leg_dict, self.positions)
         self.score = self.build_score_dict(self.reads, self.hap_tab_per_group, self.number_of_haplotypes_per_group, self.ancestral_makeup, self.min_HF)
-        
+
     def build_reads_dict(self, obs_tab, leg_dict):
         """ Returns a dictionary that lists read IDs of reads that overlap with
             SNPs and gives the alleles in each read. """
-    
+
         reads = collections.defaultdict(list)
-    
+
         for pos, read_id, base in obs_tab:
             if base in leg_dict.get(pos,[]):
                 reads[read_id].append((pos,base))
-    
+
         return reads
 
     def build_overlaps_dict(self, obs_tab, leg_dict):
         """ Returns a dictionary that lists chromosome positions of SNPs and gives a
         list of read IDs for all the reads that overlap with the SNP. """
-        
+
         overlaps_dict = collections.defaultdict(list)
-        
+
         for pos, read_id, base in obs_tab:
             if base in leg_dict.get(pos,[]):
                 overlaps_dict[pos].append(read_id)
         return overlaps_dict
 
     def build_hap_tab_per_group(self, hap_tab_per_group, leg_dict, positions):
-        """  Returns a nested dictionary that lists group2/superpopulations and 
+        """  Returns a nested dictionary that lists group2/superpopulations and
         given a dictionary of SNPs position vs. haplotypes in the group2. """
-        
+
         relevant_positions= set(positions)
         result = {group2: {pos: hap for pos, hap in zip(leg_dict,hap_tab) if pos in relevant_positions}
                       for group2, hap_tab in hap_tab_per_group.items()}
-        
+
         return result
-    
+
     def build_score_dict(self, reads_dict, hap_tab_per_group, number_of_haplotypes_per_group, ancestral_makeup, min_HF):
         """ Returns a dicitonary lists read_IDs and gives their score. The scoring
         algorithm scores each read according to the number of differet haplotypes
@@ -157,34 +153,34 @@ class supporting_dictionaries:
         and 1-min_HF add to the score of a read. """
 
         score_dict = {}
-        max_HF = 1 - min_HF #Maximal haplotype frequency    
+        max_HF = 1 - min_HF #Maximal haplotype frequency
         alpha = {group2: ancestral_makeup[group2]/number_of_haplotypes for group2, number_of_haplotypes in number_of_haplotypes_per_group.items()}
-       
+
         B = {group2: (1 << number_of_haplotypes) - 1
              for group2, number_of_haplotypes in number_of_haplotypes_per_group.items()} ### Used later for flipping bits. Also, (1 << number_of_haplotypes) -1 equivalent to int('1'*number_of_haplotypes,2).
-        
-        
+
+
         for read_id in reads_dict:
             haplotypes = collections.defaultdict(list)
-            
+
             for pos,base in reads_dict[read_id]:
-                
-                eff_allele_freq = sum(proportion * popcount(hap_tab_per_group[group2][pos]) / number_of_haplotypes_per_group[group2] 
+
+                eff_allele_freq = sum(proportion * popcount(hap_tab_per_group[group2][pos]) / number_of_haplotypes_per_group[group2]
                     for group2, proportion in ancestral_makeup.items())
 
-                if 0.01 <= eff_allele_freq <= 0.99: ### Include only biallelic SNPs with MAF of at least 0.01. 
+                if 0.01 <= eff_allele_freq <= 0.99: ### Include only biallelic SNPs with MAF of at least 0.01.
                     for group2, b in B.items():
-                        hap = hap_tab_per_group[group2][pos]    
+                        hap = hap_tab_per_group[group2][pos]
                         haplotypes[group2].append((hap, hap ^ b)) ### ^b flips all bits of the binary number using bitwise xor operator.
-                
-            if len(haplotypes):   
+
+            if len(haplotypes):
                 cache = [(a * popcount(reduce(and_,hap)) for hap in product(*haplotypes[group2]))
                              for group2,a in alpha.items()]
-                
+
                 score_dict[read_id] = sum(min_HF<=i<=max_HF for i in map(sum,zip(*cache)))
-            
+
             else:
-                
+
                 score_dict[read_id] = 0
 
         return score_dict
@@ -203,29 +199,29 @@ def build_gw_dict(disomy, monosomy, window_size, offset, min_reads, max_reads, m
 
     assert len(disomy.positions), 'error: the observation table of the disomy is empty.'
     assert len(monosomy.positions), 'error: the observation table of the monosomy is empty.'
-    
+
     positions = sorted(disomy.positions+monosomy.positions)
     first, last = positions[0] + offset, positions[-1] + window_size
     a, b  = first, first+window_size
     cache_disomy, cache_monosomy = set(), set()
-    
+
     gw_disomy = {}
     gw_monosomy = {}
-    
+
     for pos in positions:
-        
-        if pos<first: 
+
+        if pos<first:
             continue
-        
+
         while b<last:
-            
+
             if a<=pos<b:
-                cache_disomy.update(read_ID for read_ID in disomy.overlaps.get(pos,[]) 
+                cache_disomy.update(read_ID for read_ID in disomy.overlaps.get(pos,[])
                                     if min_score<=disomy.score[read_ID])
-                cache_monosomy.update(read_ID for read_ID in monosomy.overlaps.get(pos,[]) 
+                cache_monosomy.update(read_ID for read_ID in monosomy.overlaps.get(pos,[])
                                       if min_score<=monosomy.score[read_ID])
                 break
-            
+
             if adaptive:
                 cond = {}
                 cond[0] = 0<len(cache_disomy)<2*min_reads or 0<len(cache_monosomy)<min_reads
@@ -234,14 +230,14 @@ def build_gw_dict(disomy, monosomy, window_size, offset, min_reads, max_reads, m
                 if all(cond.values()):
                     b += 10000
                     continue
-            
+
             gw_disomy[a,b-1] = tuple(cache_disomy) #the genomic window includes both endpoints.
             gw_monosomy[a,b-1] = tuple(cache_monosomy) #the genomic window includes both endpoints.
             a, b = b, b+window_size
             cache_disomy, cache_monosomy = set(), set()
 
     return gw_disomy, gw_monosomy
-    
+
 def pick_reads(reads_dict,read_IDs,max_reads):
     """ Draws up to max_reads reads from a given genomic window. The reads are
         randomly sampled without replacement to meet the assumptions of the
@@ -254,7 +250,7 @@ def pick_reads(reads_dict,read_IDs,max_reads):
 def effective_number_of_subsamples(num_of_reads,min_reads,max_reads,subsamples):
     """ Ensures that the number of requested subsamples is not larger than the
     number of unique subsamples. In addition, it checks that a genomic window
-    contains a minimal number of reads (min_reads) that overlap with known 
+    contains a minimal number of reads (min_reads) that overlap with known
     SNPs. """
 
     if  min_reads <= num_of_reads > max_reads:
@@ -277,7 +273,7 @@ def bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab,
     disomy = supporting_dictionaries(disomy_obs_tab, leg_tab, hap_tab, number_of_haplotypes, ancestral_makeup, min_HF)
     monosomy = supporting_dictionaries(monosomy_obs_tab, leg_tab, hap_tab, number_of_haplotypes, ancestral_makeup, min_HF)
     gw_disomy, gw_monosomy = build_gw_dict(disomy, monosomy, window_size, offset, min_reads, max_reads, min_score)
-        
+
     if type(ancestral_makeup)==set and len(ancestral_makeup)==1:
         print('Assuming one ancestral population: %s.' % next(iter(ancestral_makeup)))
         examine = homogeneous(disomy_obs_tab + monosomy_obs_tab, leg_tab, hap_tab, number_of_haplotypes)
@@ -285,7 +281,7 @@ def bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab,
         print('Assuming recent-admixture between %s and %s.' % tuple(ancestral_makeup))
         examine = recent_admixture(disomy_obs_tab + monosomy_obs_tab, leg_tab, hap_tab, number_of_haplotypes)
     elif type(ancestral_makeup)==dict:
-        print('Assuming the following ancestral makeup:', ", ".join("{:.1f}% {}".format(100*v, k) for k, v in ancestral_makeup.items()))    
+        print('Assuming the following ancestral makeup:', ", ".join("{:.1f}% {}".format(100*v, k) for k, v in ancestral_makeup.items()))
         examine = distant_admixture(disomy_obs_tab + monosomy_obs_tab, leg_tab, hap_tab, number_of_haplotypes, ancestral_makeup)
     else:
         raise Exception('error: unsupported ancestral-makeup.')
@@ -296,14 +292,14 @@ def bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab,
 
         effN_disomy = effective_number_of_subsamples(len(gw_disomy[window]),2*min_reads,2*max_reads,subsamples)
         effN_monosomy = effective_number_of_subsamples(len(gw_monosomy[window]),min_reads,max_reads,subsamples)
-        
-        if effN_disomy==0 or effN_monosomy==0: 
+
+        if effN_disomy==0 or effN_monosomy==0:
             continue ### Ensures that the genomic windows contains enough reads for sampling.
-        
+
         effN = max(effN_disomy, effN_monosomy)
         if effN: ### Adds a genomic window only if it contains enough reads for sampling.
             cache = []
-            for i in range(effN):                
+            for i in range(effN):
                 sys.stdout.write(f"\r{chr(10633)+' ':s}{chr(10495) * (32*(k+1)//len(gw_disomy)) + chr(10240 + (256-effN+i)%256)  :{33}s}{' '+chr(10634):s} {int(100*(k+1)/len(gw_disomy))}%"); sys.stdout.flush()
                 sampled_reads_disomy = pick_reads(disomy.reads,gw_disomy[window],2*max_reads)
                 sampled_reads_monosomy = pick_reads(monosomy.reads,gw_monosomy[window],max_reads)
@@ -311,7 +307,7 @@ def bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab,
                 sampled_reads = (*sampled_reads_disomy, sampled_reads_monosomy_concatenated)
                 cache.append(examine.get_likelihoods(sampled_reads))
             likelihoods[window] = tuple(cache)
-        
+
     return likelihoods, {'disomy': gw_disomy, 'monosomy': gw_monosomy} , examine.fraction_of_matches
 
 def statistics(likelihoods,windows):
@@ -320,29 +316,26 @@ def statistics(likelihoods,windows):
 
     if likelihoods:
         window_size_mean, window_size_std = mean_and_std((j-i+1 for (i,j) in likelihoods))
-        
+
         disomy_reads_mean, disomy_reads_std = mean_and_std((len(read_IDs) for window,read_IDs in windows['disomy'].items() if window in likelihoods))
-        
+
         monosomy_reads_mean, monosomy_reads_std = mean_and_std((len(read_IDs) for window,read_IDs in windows['monosomy'].items() if window in likelihoods))
 
-        
+
         num_of_windows = len(likelihoods)
-        
+
         LLRs = {window:  tuple(starmap(LLR, likelihoods_in_window))
                            for window,likelihoods_in_window in likelihoods.items()}
-        
+
         LLRs_per_genomic_window = {window: mean_and_var(LLRs_in_window) for window, LLRs_in_window in LLRs.items()}
-        
+
         cache = mean_and_std_of_mean_of_rnd_var(LLRs)
-        
-        
-        LLRs_per_chromosome = {'mean_of_mean': cache[0], 
-                     'std_of_mean': cache[1], 
+
+
+        LLRs_per_chromosome = {'mean_of_mean': cache[0],
+                     'std_of_mean': cache[1],
                      'fraction_of_negative_LLRs': mean(m<0 for m,v in LLRs_per_genomic_window.values())}
 
-
-        ### LLRs_per_chromosome = summarize(*zip(*LLRs_per_genomic_window.values()))
-        
         result = {'num_of_windows': num_of_windows,
                   'disomy_reads_mean': disomy_reads_mean,
                   'disomy_reads_std': disomy_reads_std,
@@ -359,8 +352,8 @@ def statistics(likelihoods,windows):
 def print_summary(info):
     S = info['statistics']
     ancestral_makeup = ", ".join("{:.1f}% {}".format(100*v, k) for k, v in info['ancestral_makeup'].items()) if type(info['ancestral_makeup'])==dict else ', '.join(info['ancestral_makeup'])
-    matched_alleles = ", ".join("{}: {:.1f}%".format(k,100*v) for k, v in info['statistics']['matched_alleles'].items()) 
-        
+    matched_alleles = ", ".join("{}: {:.1f}%".format(k,100*v) for k, v in info['statistics']['matched_alleles'].items())
+
     print('\nFilename of the disomy observation table: %s' % info['disomy_obs_filename'])
     print('\nFilename of the monosomy observation table: %s' % info['monosomy_obs_filename'])
     print('\nSummary statistics:')
@@ -389,14 +382,14 @@ def save_results(likelihoods,info,compress,obs_filename,output_filename,output_d
     ext = ('.'+compress) * (compress in ('bz2','gz'))
     obs_filename_stripped =  obs_filename.rsplit('/', 1).pop()
     default_output_filename = re.sub('(.*)obs.p(.*)',f'\\1LLR.p{ext:s}', obs_filename_stripped, 1)
-    if output_filename=='': 
+    if output_filename=='':
         output_filename = default_output_filename
     else:
         output_filename += ext
-    
+
     output_dir = output_dir.rstrip('/') +'/' #undocumented option
     if output_dir!='' and not os.path.exists(output_dir): os.makedirs(output_dir)
-    
+
     with Open(output_dir + output_filename, "wb") as f:
         pickle.dump(likelihoods, f, protocol=4)
         pickle.dump(info, f, protocol=4)
@@ -414,7 +407,7 @@ def contrast(disomy_obs_filename,monosomy_obs_filename,leg_filename,
     time0 = time.time()
 
     random.seed(a=kwargs.get('seed', None), version=2) #I should make sure that a=None after finishing to debug the code.
-    
+
     if kwargs.get('seed', None) != None:
         print('caution: seed is set to a fixed value.')
 
@@ -433,17 +426,17 @@ def contrast(disomy_obs_filename,monosomy_obs_filename,leg_filename,
     with open_obs(disomy_obs_filename, 'rb') as obs_in:
         disomy_obs_tab = pickle.load(obs_in)
         disomy_info = pickle.load(obs_in)
-    
+
     open_obs = load(monosomy_obs_filename)
     with open_obs(monosomy_obs_filename, 'rb') as obs_in:
         monosomy_obs_tab = pickle.load(obs_in)
         monosomy_info = pickle.load(obs_in)
-    
+
     assert monosomy_info['chr_id']==disomy_info['chr_id'] , "error: the chr_id in the observations tables does not match."
-    
+
     ancestry = set(ancestral_makeup.keys()) if type(ancestral_makeup)==dict else set(ancestral_makeup)
-    assert ancestry=={*hap_tab}, 'error: the given ancestral makup does match the populations (group2) in the reference panel.'
-    
+    assert ancestry=={*hap_tab}, 'error: the given ancestral makup does match the superpopulations (group2) in the reference panel.'
+
     likelihoods, windows_dict, matched_alleles = bootstrap(disomy_obs_tab, monosomy_obs_tab, leg_tab, hap_tab, number_of_haplotypes, ancestral_makeup, window_size, subsamples, offset, min_reads, max_reads, min_score, min_HF)
 
     some_statistics = {'matched_alleles': matched_alleles,
@@ -460,11 +453,11 @@ def contrast(disomy_obs_filename,monosomy_obs_filename,leg_filename,
             'min_reads': min_reads,
             'max_reads': max_reads,
             'min_score': min_score,
-            'min_HF': min_HF,    
+            'min_HF': min_HF,
             'statistics': {**statistics(likelihoods,windows_dict), **some_statistics},
             'read_length': {'monosomy': monosomy_info.get('read_length',None), 'disomy': disomy_info.get('read_length',None)}}
-    
-    
+
+
     if output_filename!=None:
         save_results(likelihoods,info,compress,disomy_obs_filename,output_filename,kwargs.get('output_dir', 'results'))
 
@@ -474,6 +467,15 @@ def contrast(disomy_obs_filename,monosomy_obs_filename,leg_filename,
     print('Done calculating LLRs for all the genomic windows in %.3f sec.' % ((time1-time0)))
 
     return likelihoods, info
+
+if platform.python_implementation()=='PyPy':
+    popcount = popcount_lk()
+else:
+    try:
+        from gmpy2 import popcount
+    except Exception as error_msg:
+        print(error_msg)
+        popcount = popcount_lk()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
