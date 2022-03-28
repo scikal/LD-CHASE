@@ -270,7 +270,8 @@ def build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask_filename):
     IMPUTE2_SAMPLE = [s for s in REQUESTED_SAMPLES if s.sample_id in vcf_in.samples] #The requested samples that also exist in the VCF file.
     
     MISSING_SAMPLES = [s.sample_id for s in set(REQUESTED_SAMPLES)-set(IMPUTE2_SAMPLE)] #The requested samples that were missing from the VCF file.
-    print(f"The following samples were missing from the VCF file: {', '.join(MISSING_SAMPLES):s} ")
+    if MISSING_SAMPLES != []:
+        print(f"The following samples were missing from the VCF file: {', '.join(MISSING_SAMPLES):s} ")
     
     sampleIDs = [s.sample_id for s in IMPUTE2_SAMPLE] #All sample IDs that exist in both the SAMPLE file and the VCF file.
     
@@ -418,7 +419,7 @@ def test(samp_filename,vcf_filename,mask):
     print("samples['cyvcf2']==samples['bcftools']:", samples['cyvcf2']==samples['bcftools'])
     
     return 0
-"""
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -441,7 +442,7 @@ if __name__ == "__main__":
     sys.exit(main(**vars(args)))
 else:
     print('The module MAKE_REF_PANEL was imported.')
-"""
+
 
 #samp_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/samples_per_panel/EAS_EUR_panel.sample'
 #vcf_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/1000_genomes_30x_on_GRCh38_3202_samples/CCDG_14151_B01_GRM_WGS_2020-08-05_chr21.filtered.shapeit2-duohmm-phased.vcf.gz'
@@ -489,7 +490,7 @@ if __name__ == "__main__":
     for p in proc:
         p.join()            
 """     
-
+"""
 for SP in {'EUR','EAS','SAS','AFR','AMR','EAS_EUR','EUR_SAS','EAS_SAS',
            'AFR_EUR','AFR_AMR','AMR_EUR','AMR_EAS','AMR_SAS','AFR_SAS',
            'AFR_EAS','AMR_EUR_SAS','EAS_EUR_SAS','AMR_EAS_SAS','AFR_AMR_EUR',
@@ -522,4 +523,4 @@ for SP in {'EUR','EAS','SAS','AFR','AMR','EAS_EUR','EUR_SAS','EAS_SAS',
         
         with open_leg(leg_filename,'wb') as leg_in:
             pickle.dump(leg_tab,leg_in)
-        
+"""
