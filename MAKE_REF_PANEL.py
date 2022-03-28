@@ -266,8 +266,13 @@ def build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask_filename):
     
     assert len(vcf_in.seqnames)==1, 'All records in the VCF must correspond to a single chromosome.'
 
-    IMPUTE2_SAMPLE = parse_samples(samp_filename)
-    sampleIDs = [s.sample_id for s in IMPUTE2_SAMPLE if s.sample_id in vcf_in.samples] #All sample IDs that exist in both the SAMPLE file and the VCF file.
+    REQUESTED_SAMPLES = parse_samples(samp_filename)   
+    IMPUTE2_SAMPLE = [s for s in REQUESTED_SAMPLES if s.sample_id in vcf_in.samples] #The requested samples that also exist in the VCF file.
+    
+    MISSING_SAMPLES = [s.sample_id for s in set(REQUESTED_SAMPLES)-set(IMPUTE2_SAMPLE)] #The requested samples that were missing from the VCF file.
+    print(f"The following samples were missing from the VCF file: {', '.join(MISSING_SAMPLES):s} ")
+    
+    sampleIDs = [s.sample_id for s in IMPUTE2_SAMPLE] #All sample IDs that exist in both the SAMPLE file and the VCF file.
     
     len_sampleIDs = len(sampleIDs)
     
@@ -392,7 +397,7 @@ def test(samp_filename,vcf_filename,mask):
 
     
     return 0
-
+"""
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -436,9 +441,11 @@ if __name__ == "__main__":
         for i in ['X',*range(22,0,-1)]:
             print(i)
             if i=='X':
-                vcf_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/1000_genomes_30x_on_GRCh38_3202_samples/CCDG_14151_B01_GRM_WGS_2020-08-05_chrX.filtered.eagle2-phased.v2.vcf.gz'
+                #vcf_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/1000_genomes_30x_on_GRCh38_3202_samples/CCDG_14151_B01_GRM_WGS_2020-08-05_chrX.filtered.eagle2-phased.v2.vcf.gz'
+                vcf_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project1_LD-PGTA/LD-PGTA_ecosystem/vcf_phase3_hg38_v2/ALL.chrX.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz'
             else:
-                vcf_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/1000_genomes_30x_on_GRCh38_3202_samples/CCDG_14151_B01_GRM_WGS_2020-08-05_chr{i}.filtered.shapeit2-duohmm-phased.vcf.gz'
+                #vcf_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/1000_genomes_30x_on_GRCh38_3202_samples/CCDG_14151_B01_GRM_WGS_2020-08-05_chr{i}.filtered.shapeit2-duohmm-phased.vcf.gz'
+                vcf_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project1_LD-PGTA/LD-PGTA_ecosystem/vcf_phase3_hg38_v2/ALL.chr{i}.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz'
             mask_filename = ''# f'/home/ariad/Dropbox/postdoc_JHU/Project1_LD-PGTA/LD-PGTA_ecosystem/mask/20160622.chr{i}.mask.fasta.gz'
             
             #main(samp_filename,vcf_filename,mask_filename,output_directory,force_module)
@@ -461,4 +468,4 @@ if __name__ == "__main__":
             
     
     
-"""
+
