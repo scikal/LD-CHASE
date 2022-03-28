@@ -17,15 +17,14 @@ from RECENT_ADMIXTURE_MODELS import recent_admixture
 from DISTANT_ADMIXTURE_MODELS import distant_admixture
 
 
-from itertools import product, starmap, repeat, chain
+from itertools import product, starmap, chain
 from functools import reduce
-from operator import and_, attrgetter
+from operator import and_
 from statistics import mean, variance, pstdev
 from math import comb, log
 
 leg_tuple = collections.namedtuple('leg_tuple', ('chr_id', 'pos', 'ref', 'alt')) #Encodes the rows of the legend table
 obs_tuple = collections.namedtuple('obs_tuple', ('pos', 'read_id', 'base')) #Encodes the rows of the observations table
-comb_tuple = collections.namedtuple('comb_tuple', ('ref','alt','hap'))
 
 ### Getting a function to count non-zero bits in positive integer.
 class popcount_lk:
@@ -107,8 +106,9 @@ class supporting_dictionaries:
         self.reads = self.build_reads_dict(obs_tab, self.leg_dict)
         self.overlaps = self.build_overlaps_dict(obs_tab, self.leg_dict)
         self.positions = (*self.overlaps.keys(),) ### The intersections of positions within the observation table and the reference panel.
-        self.hap_tab_per_group = self.build_hap_tab_per_group(hap_tab_per_group, self.leg_dict, self.positions)
+        self.hap_tab_per_group = self.build_hap_tab_per_group(hap_tab_per_group, leg_tab, self.positions)
         self.score = self.build_score_dict(self.reads, self.hap_tab_per_group, self.number_of_haplotypes_per_group, self.ancestral_makeup, self.min_HF)
+
 
     def build_reads_dict(self, obs_tab, leg_dict):
         """ Returns a dictionary that lists read IDs of reads that overlap with
@@ -133,12 +133,12 @@ class supporting_dictionaries:
                 overlaps_dict[pos].append(read_id)
         return overlaps_dict
 
-    def build_hap_tab_per_group(self, hap_tab_per_group, leg_dict, positions):
+    def build_hap_tab_per_group(self, hap_tab_per_group, leg_tab, positions):
         """  Returns a nested dictionary that lists group2/superpopulations and
         given a dictionary of SNPs position vs. haplotypes in the group2. """
 
         relevant_positions= set(positions)
-        result = {group2: {pos: hap for pos, hap in zip(leg_dict,hap_tab) if pos in relevant_positions}
+        result = {group2: {leg.pos: hap for leg, hap in zip(leg_tab,hap_tab) if leg.pos in relevant_positions}
                       for group2, hap_tab in hap_tab_per_group.items()}
 
         return result
@@ -165,8 +165,7 @@ class supporting_dictionaries:
 
             for pos,base in reads_dict[read_id]:
 
-                eff_allele_freq = sum(proportion * popcount(hap_tab_per_group[group2][pos]) / number_of_haplotypes_per_group[group2]
-                    for group2, proportion in ancestral_makeup.items())
+                eff_allele_freq = sum(a * popcount(hap_tab_per_group[group2][pos]) for group2, a in alpha.items())
 
                 if 0.01 <= eff_allele_freq <= 0.99: ### Include only biallelic SNPs with MAF of at least 0.01.
                     for group2, b in B.items():
@@ -180,11 +179,10 @@ class supporting_dictionaries:
                 score_dict[read_id] = sum(min_HF<=i<=max_HF for i in map(sum,zip(*cache)))
 
             else:
-
                 score_dict[read_id] = 0
 
         return score_dict
-
+    
 def build_gw_dict(disomy, monosomy, window_size, offset, min_reads, max_reads, min_score):
     """ Returns a dictionary the lists genomic windows and gives the read IDs
         of reads that overlap with SNPs in the genomic window. Only reads with
@@ -534,3 +532,27 @@ else:
     print("The module CONTRAST_HAPLOTYPES was imported.")
 
 ### END OF FILE ###
+"""
+
+hap_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/EUR_panel/chr16_EUR_panel.hap.gz'
+leg_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/EUR_panel/chr16_EUR_panel.legend.gz'
+obs_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/article/fig5-balanced_ROC_curves_for_CC/simulated_data_nonmasked_0.05x/nonadmixed_EUR_chr16/simulated.disomy.chr16.x0.100.HG00097A.NA12716A.obs.p.bz2'
+load = lambda filename: {'bz2': bz2.open, 'gz': gzip.open}.get(filename.rsplit('.',1)[1], open)  #Adjusts the opening method according to the file extension.
+open_hap = load(hap_filename)
+with open_hap(hap_filename,'rb') as hap_in:
+    hap_tab_per_group = pickle.load(hap_in)
+    number_of_haplotypes_per_group = pickle.load(hap_in)
+
+open_leg = load(leg_filename)
+with open_leg(leg_filename,'rb') as leg_in:
+    leg_tab = pickle.load(leg_in)
+
+open_obs = load('/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/article/fig5-balanced_ROC_curves_for_CC/simulated_data_nonmasked_0.05x/nonadmixed_EUR_chr16/simulated.disomy.chr16.x0.100.HG00097A.NA12716A.obs.p.bz2')
+with open_obs(obs_filename, 'rb') as obs_in:
+    obs_tab = pickle.load(obs_in)
+    #info = pickle.load(f)
+    
+Y = supporting_dictionaries( obs_tab, leg_tab, hap_tab_per_group, number_of_haplotypes_per_group, ancestral_makeup={'EUR': 1}, min_HF=0.05)
+P = [i.pos for i in leg_tab]
+P2 = [(m,i) for m,(i,j) in enumerate(zip(P[0:],P[1:])) if i==j]    
+"""
