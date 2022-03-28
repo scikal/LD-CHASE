@@ -397,7 +397,7 @@ def test(samp_filename,vcf_filename,mask):
 
     
     return 0
-"""
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -465,7 +465,7 @@ if __name__ == "__main__":
                         proc.remove(p)
     for p in proc:
         p.join()            
-            
+"""     
     
     
 
