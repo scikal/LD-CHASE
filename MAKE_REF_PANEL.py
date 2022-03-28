@@ -326,6 +326,28 @@ def build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask_filename):
 
     return result
 
+def remove_duplicates(legend, haplotypes):
+    """ In some VCF files, multi-allelic SNPs are splited into separate rows
+        that share the same chromosomal position. After the spliting the rows 
+        of the multiallelic SNPs have the same representation as biallelic SNP,
+        so these multiallelic SNPs are not removed when filtering multi-allelic
+        SNPs."""
+        
+    
+    indices = []
+    for index, previous_leg, next_leg, leg in zip(range(len(legend)), legend[-1:]+legend[:-1], legend[1:]+legend[:1], legend):
+        if leg.pos != previous_leg.pos and leg.pos != next_leg.pos:
+            indices.append(index)
+            
+    get_indices = operator.itemgetter(*indices)
+    
+    legend_filtered = get_indices(legend)
+    haplotypes_filtered = {group2: get_indices(hap) for group2, hap in haplotypes.items()}
+            
+    
+    return legend_filtered, haplotypes_filtered
+            
+
 def save_ref_panel(samp_filename, legend, haplotypes, samples, output_dir):
     """ Saves the reference panel as a compressed pickle file. """
     time0 = time.time()
@@ -345,7 +367,7 @@ def save_ref_panel(samp_filename, legend, haplotypes, samples, output_dir):
     return 0
 
 
-def main(samp_filename,vcf_filename,mask,output_directory,force_module):
+def main(samp_filename,vcf_filename,ignore_duplicates,mask,output_directory,force_module):
     """ Builds and saves the reference panel. """
 
     if force_module=='pysam' or handle_vcf+force_module == 'pysam':
@@ -359,6 +381,10 @@ def main(samp_filename,vcf_filename,mask,output_directory,force_module):
     else:
         print('--- Creating the reference panel via bcftools.')
         legend, haplotypes, samples = build_ref_panel_via_bcftools(samp_filename,vcf_filename,mask)
+
+    if ignore_duplicates:    
+        print('Ignoring multiple records with the same chromosomal position.')
+        legend, haplotypes = remove_duplicates(legend, haplotypes)
 
     save_ref_panel(samp_filename, legend, haplotypes, samples, output_directory)
     return 0
@@ -375,16 +401,12 @@ def test(samp_filename,vcf_filename,mask):
     haplotypes = {}
     samples = {}
     
-        
     print('--- Creating the reference panel via the module pysam.')
     legend['pysam'], haplotypes['pysam'], samples['pysam'] = build_ref_panel_via_pysam(samp_filename,vcf_filename,mask)
-    
     print('--- Creating the reference panel via the module cyvcf2.')
     legend['cyvcf2'], haplotypes['cyvcf2'], samples['cyvcf2'] = build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask)
-        
     print('--- Creating the reference panel via bcftools.')
     legend['bcftools'], haplotypes['bcftools'], samples['bcftools'] = build_ref_panel_via_bcftools(samp_filename,vcf_filename,mask)
-    
     print("legend['pysam']==legend['cyvcf2']:", legend['pysam']==legend['cyvcf2'])
     print("legend['pysam']==legend['bcftools']:", legend['pysam']==legend['bcftools'])
     print("legend['cyvcf2']==legend['bcftools']:", legend['cyvcf2']==legend['bcftools'])
@@ -394,10 +416,9 @@ def test(samp_filename,vcf_filename,mask):
     print("samples['pysam']==samples['cyvcf2']:", samples['pysam']==samples['cyvcf2'])
     print("samples['pysam']==samples['bcftools']:", samples['pysam']==samples['bcftools'])
     print("samples['cyvcf2']==samples['bcftools']:", samples['cyvcf2']==samples['bcftools'])
-
     
     return 0
-
+"""
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -407,6 +428,8 @@ if __name__ == "__main__":
                     help='IMPUTE2 sample file')
     parser.add_argument('vcf_filename', metavar='vcf_filename', type=str,
                         help='IMPUTE2 legend file')
+    parser.add_argument('-i','--ignore-duplicates', action='store_true', default=True,
+                        help='Ignore multiple records with the same chromosomal position.')
     parser.add_argument('-m','--mask', type=str,metavar='GZIPPED_FASTA_FILENAME', default='',
                         help='An accessibility mask file in a gzipped FASTA format.'
                              'Supplying an accessibility mask file will reduce false SNPs in regions of the genome that are less accessible to NGS methods.')
@@ -418,7 +441,7 @@ if __name__ == "__main__":
     sys.exit(main(**vars(args)))
 else:
     print('The module MAKE_REF_PANEL was imported.')
-
+"""
 
 #samp_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/samples_per_panel/EAS_EUR_panel.sample'
 #vcf_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/1000_genomes_30x_on_GRCh38_3202_samples/CCDG_14151_B01_GRM_WGS_2020-08-05_chr21.filtered.shapeit2-duohmm-phased.vcf.gz'
@@ -466,6 +489,37 @@ if __name__ == "__main__":
     for p in proc:
         p.join()            
 """     
-    
-    
 
+for SP in {'EUR','EAS','SAS','AFR','AMR','EAS_EUR','EUR_SAS','EAS_SAS',
+           'AFR_EUR','AFR_AMR','AMR_EUR','AMR_EAS','AMR_SAS','AFR_SAS',
+           'AFR_EAS','AMR_EUR_SAS','EAS_EUR_SAS','AMR_EAS_SAS','AFR_AMR_EUR',
+           'AFR_AMR_SAS','AFR_AMR_EAS'}:    
+
+    for i in ['X',*range(22,0,-1)]:
+        print(SP,i)
+
+
+        hap_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels_NYGC/{SP}_panel/chr{i}_{SP}_panel.hap.gz'
+        leg_filename = f'/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels_NYGC/{SP}_panel/chr{i}_{SP}_panel.legend.gz'
+        
+        load = lambda filename: {'bz2': bz2.open, 'gz': gzip.open}.get(filename.rsplit('.',1)[1], open)  #Adjusts the opening method according to the file extension.
+        
+        open_hap = load(hap_filename)
+        open_leg = load(leg_filename)
+
+        with open_hap(hap_filename,'rb') as hap_in:
+            hap_tab_per_group = pickle.load(hap_in)
+            number_of_haplotypes_per_group = pickle.load(hap_in)
+        
+        with open_leg(leg_filename,'rb') as leg_in:
+            leg_tab = pickle.load(leg_in)
+                    
+        leg_tab, hap_tab_per_group = remove_duplicates(leg_tab, hap_tab_per_group)
+        
+        with open_hap(hap_filename,'wb') as hap_in:
+            pickle.dump(hap_tab_per_group,hap_in)
+            pickle.dump(number_of_haplotypes_per_group,hap_in)
+        
+        with open_leg(leg_filename,'wb') as leg_in:
+            pickle.dump(leg_tab,leg_in)
+        
