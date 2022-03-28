@@ -183,7 +183,7 @@ def build_ref_panel_via_bcftools(samp_filename,vcf_filename,mask_filename):
     
     time1 = time.time()
     print('Done building the reference panel in %.3f sec.' % (time1-time0))
-    return LEGEND, (HAPLOTYPES, HAP_length), SAMPLE
+    return LEGEND, HAPLOTYPES, HAP_length, SAMPLE
 
 def build_ref_panel_via_pysam(samp_filename,vcf_filename,mask_filename):
     """ Builds a reference panel via pysam with similar structure to the IMPUTE2 format.
@@ -246,7 +246,7 @@ def build_ref_panel_via_pysam(samp_filename,vcf_filename,mask_filename):
     print(f'--- The reference panel contains {len(LEGEND):d} SNPs.')
     print('Done building the reference panel in %.3f sec.' % (time1-time0))
 
-    result = tuple(LEGEND), (HAPLOTYPES, HAP_length), SAMPLES
+    result = tuple(LEGEND), HAPLOTYPES, HAP_length, SAMPLES
 
     return result
 
@@ -323,7 +323,7 @@ def build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask_filename):
     print(f'--- The reference panel contains {len(LEGEND):d} SNPs.')
     print('Done building the reference panel in %.3f sec.' % (time1-time0))
 
-    result = tuple(LEGEND), (HAPLOTYPES, HAP_length), SAMPLES
+    result = tuple(LEGEND), HAPLOTYPES, HAP_length, SAMPLES
 
     return result
 
@@ -349,7 +349,7 @@ def remove_duplicates(legend, haplotypes):
     return legend_filtered, haplotypes_filtered
             
 
-def save_ref_panel(samp_filename, legend, haplotypes, samples, output_dir):
+def save_ref_panel(samp_filename, legend, haplotypes, number_of_haplotypes, samples, output_dir):
     """ Saves the reference panel as a compressed pickle file. """
     time0 = time.time()
     if output_dir.strip()!='' and not os.path.exists(output_dir): os.makedirs(output_dir)
@@ -359,8 +359,8 @@ def save_ref_panel(samp_filename, legend, haplotypes, samples, output_dir):
     with gzip.open(path+base_filename+'.legend.gz','wb') as f:
         pickle.dump(legend,f)
     with gzip.open(path+base_filename+'.hap.gz','wb') as f:
-        pickle.dump(haplotypes[0],f)
-        pickle.dump(haplotypes[1],f)
+        pickle.dump(haplotypes,f)
+        pickle.dump(number_of_haplotypes,f)
     with gzip.open(path+strip_samp_filename+'.sample.gz','wb') as f:
         pickle.dump(samples,f)
     time1 = time.time()
@@ -375,19 +375,19 @@ def main(samp_filename,vcf_filename,ignore_duplicates,mask,output_directory,forc
         if 'pysam' not in sys.modules:
             global pysam; import pysam
         print('--- Creating the reference panel via the module pysam.')
-        legend, haplotypes, samples = build_ref_panel_via_pysam(samp_filename,vcf_filename,mask)
+        legend, haplotypes, number_of_haplotypes, samples = build_ref_panel_via_pysam(samp_filename,vcf_filename,mask)
     elif force_module=='cyvcf2' or handle_vcf+force_module == 'cyvcf2':
         print('--- Creating the reference panel via the module cyvcf2.')
-        legend, haplotypes, samples = build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask)
+        legend, haplotypes, number_of_haplotypes, samples = build_ref_panel_via_cyvcf2(samp_filename,vcf_filename,mask)
     else:
         print('--- Creating the reference panel via bcftools.')
-        legend, haplotypes, samples = build_ref_panel_via_bcftools(samp_filename,vcf_filename,mask)
+        legend, haplotypes, number_of_haplotypes, samples = build_ref_panel_via_bcftools(samp_filename,vcf_filename,mask)
 
     if ignore_duplicates:    
-        print('Ignoring multiple records with the same chromosomal position.')
+        print('--- Ignoring multiple records with the same chromosomal position.')
         legend, haplotypes = remove_duplicates(legend, haplotypes)
 
-    save_ref_panel(samp_filename, legend, haplotypes, samples, output_directory)
+    save_ref_panel(samp_filename, legend, haplotypes, number_of_haplotypes, samples, output_directory)
     return 0
 
 def test(samp_filename,vcf_filename,mask):
