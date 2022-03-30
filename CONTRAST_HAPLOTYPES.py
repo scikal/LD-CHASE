@@ -534,8 +534,8 @@ else:
 ### END OF FILE ###
 """
 
-hap_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/EUR_panel/chr16_EUR_panel.hap.gz'
-leg_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels/EUR_panel/chr16_EUR_panel.legend.gz'
+hap_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels_NYGC/EUR_panel/chr16_EUR_panel.hap.gz'
+leg_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/reference_panels_NYGC/EUR_panel/chr16_EUR_panel.legend.gz'
 obs_filename = '/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/article/fig5-balanced_ROC_curves_for_CC/simulated_data_nonmasked_0.05x/nonadmixed_EUR_chr16/simulated.disomy.chr16.x0.100.HG00097A.NA12716A.obs.p.bz2'
 load = lambda filename: {'bz2': bz2.open, 'gz': gzip.open}.get(filename.rsplit('.',1)[1], open)  #Adjusts the opening method according to the file extension.
 open_hap = load(hap_filename)
