@@ -366,7 +366,7 @@ def print_summary(info):
 
     if S.get('LLRs_per_chromosome',None):
         L = S['LLRs_per_chromosome']
-        print("--- Chromosome-wide LLR between BPH and SPH ----")
+        print("--- Chromosome-wide LLR between UNMATCHED and MATCHED ----")
         print(f"Mean LLR: {L['mean_of_mean']:.3f}, Standard error of the mean LLR: {L['std_of_mean']:.3f}")
         print(f"Fraction of genomic windows with a negative LLR: {L['fraction_of_negative_LLRs']:.3f}")
 
