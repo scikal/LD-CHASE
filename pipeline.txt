@@ -15,6 +15,7 @@
 [Balanced ROC analysis](#ROC_analysis) \
 [Description of the IMPUTE2 format for reference panels](#IMPUTE2) \
 [Generating IMPUTE2 reference panels from a VCF file](#"VCF2IMPUTE")
+[Dependencies](#"Dependencies")
 
 # What is Contrast-Crossovers good for? #
 <a name="background"/>
@@ -397,3 +398,12 @@ Then, we convert from BCF to hap/legend/sample format used by IMPUTE2 and SHAPEI
 
 where `--haplegendsample prefix`  _converts from BCF to hap/legend/sample format used by IMPUTE2. The columns of the .legend file are ID,POS,REF,ALT. Moreover, in order to prevent strand swaps, the program uses IDs of the form "CHROM:POS_REF_ALT". The columns of the .sample file are population, group and sex._
 
+
+# Dependencies #
+<a name="Dependencies"/>
+
+* All scripts require Python v3.8 or above. The CPython and PyPy implementation are supported.
+* The script `MAKE_REF_PANEL.py` requires one of the following: (a) bcftools v1.14 or above, (b) cyvcf2 v0.30.12 or above, (c) pysam v0.18.0 or above.
+* The script `MAKE_OBS_TAB.py` requires pysam v0.18.0 or above.
+* The script `CONTRAST_HAPLOTYPES.py` would perform faster when gmpy2 v2.1.0rc1 is present.
+* The script `PLOT_PANEL.py` requires matplotlib v3.5.1 or above.
