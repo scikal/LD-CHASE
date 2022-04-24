@@ -16,9 +16,6 @@ import argparse, sys
 from itertools import product, starmap, chain, accumulate, islice
 from collections import ChainMap
 
-
-likelihoods_tuple = collections.namedtuple('likelihoods_tuple', ('monosomy', 'disomy', 'SPH', 'BPH'))
-
 def chr_length(chr_id):
     """ Return the chromosome length for a given chromosome, based on the reference genome hg38.""" 
     #The data of chromosome length was taken from https://www.ncbi.nlm.nih.gov/grc/human/data?asm=GRCh38
