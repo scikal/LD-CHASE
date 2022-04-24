@@ -75,6 +75,8 @@ def load_likelihoods(filename):
 def show_info(info):
     S = info['statistics']
     ancestral_makeup = ", ".join("{:.1f}% {}".format(100*v, k) for k, v in info['ancestral_makeup'].items()) if type(info['ancestral_makeup'])==dict else ', '.join(info['ancestral_makeup'])
+    matched_alleles = ", ".join("{}: {:.1f}%".format(k,100*v) for k, v in info['statistics']['matched_alleles'].items())
+
     print('\nFilename of the disomy observation table: %s' % info['disomy_obs_filename'])
     print('\nFilename of the monosomy observation table: %s' % info['monosomy_obs_filename'])
     print('\nSummary statistics:')
@@ -85,11 +87,11 @@ def show_info(info):
     print('Number of genomic windows: %d, Mean and standard error of genomic window size: %d, %d.' % (S.get('num_of_windows',0),S.get('window_size_mean',0),S.get('window_size_std',0)))
     print('Mean and standard error of meaningful reads per genomic window from the disomy sequence: %.1f, %.1f.' % (S.get('disomy_reads_mean',0), S.get('disomy_reads_std',0)))
     print('Mean and standard error of meaningful reads per genomic window from the monosomy sequence: %.1f, %.1f.' % (S.get('monosomy_reads_mean',0), S.get('monosomy_reads_std',0)))
-    print('Ancestral makeup: %s, Fraction of alleles matched to the reference panel: %.3f.' % (ancestral_makeup, info['statistics']['matched_alleles']))
+    print('Ancestral makeup: %s, Fraction of alleles matched to the reference panel: %s.' % (ancestral_makeup, matched_alleles))
 
     if S.get('LLRs_per_chromosome',None):
         L = S['LLRs_per_chromosome']
-        print("--- Chromosome-wide LLR between BPH and SPH ----")
+        print("--- Chromosome-wide LLR between UNMATCHED and MATCHED ----")
         print(f"Mean LLR: {L['mean_of_mean']:.3f}, Standard error of the mean LLR: {L['std_of_mean']:.3f}")
         print(f"Fraction of genomic windows with a negative LLR: {L['fraction_of_negative_LLRs']:.3f}")
         
