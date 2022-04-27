@@ -243,7 +243,7 @@ def panel_plot(DATA,**kwargs):
     scale = kwargs.get('scale', 0.5)
     bin_size = kwargs.get('bin_size', 4000000)
     z_score = kwargs.get('z_score', 1.96)
-    lookahead = kwargs.get('lookahead', 30)
+    lookahead = kwargs.get('lookahead', 25)
 
     save = kwargs.get('save', '')
     extension = kwargs.get('extension', 'svg')
