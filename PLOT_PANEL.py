@@ -200,10 +200,10 @@ def detect_crossovers(genomic_windows, mean_of_LLRs, variance_of_LLRs, z_score=1
                 
     return crossovers
     
-def clusters_crossovers(crossovers, dx):
-    """ Clusters crossovers in a region of width dx, when this regions contains
-        at least k crossovers. Then, the crossovers in each cluster are averaged
-        and associated with a single crossover in the monosomy."""
+def clusters_crossovers(crossovers, dx, min_frac=0.5):
+    """ Clusters crossovers in a region of width dx, when at least min_frac of 
+        the samples admit this crossover. Then, the crossovers in each cluster
+        are averaged and associated with a single crossover in the monosomy. """
     
     monosomy_crossovers = {}
     
@@ -213,7 +213,7 @@ def clusters_crossovers(crossovers, dx):
     if lenC:
         C_flatten, K_flatten = zip(*sorted(ChainMap(*C_filtered).items()) ) # Combine all crossovers into one sorted list.
        
-    for k in range(lenC, int(0.5 *lenC)+1, -1):
+    for k in range(lenC, int(min_frac * lenC)+1, -1):
         i = 0
         while(i<=len(C_flatten)-k):
             if C_flatten[i+k-1]-C_flatten[i] < dx:
@@ -272,7 +272,7 @@ def panel_plot(DATA,**kwargs):
 
     if len(DATA)>columns:
         fig,axs = plt.subplots(rows ,columns, sharex='col', sharey='row', figsize=(6.666 * columns * scale, 5.625 * rows * scale))
-        fig.subplots_adjust(left=0.045, bottom=0.1, right=.99, top=(0.85 if kwargs.get('title',None) else 0.90), wspace=None, hspace=None)
+        fig.subplots_adjust(left=0.045, bottom=0.13-rows*0.015, right=.99, top=(0.81+rows*0.025 if kwargs.get('title',None) else 0.86+rows*0.025), wspace=None, hspace=None)
     else:
         fig,axs = plt.subplots(rows ,columns, sharex='none', sharey='row', figsize=( 6.666 * columns * scale, 1.25 * 5.625 * rows * scale))
         fig.subplots_adjust(left=0.05, bottom=0.3, right=.99, top=(0.82 if kwargs.get('title',None) else 0.86), wspace=None, hspace=None)
@@ -542,46 +542,53 @@ else:
 #    except Exception as e:
 #        print(identifier,e)
 filenames = [
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-9-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-19-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-2-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-3-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-18-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-17-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-16-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-13-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-7-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-14-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-11-30-May-2020.chr10.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-8-30-May-2020.chr10.LLR.p.bz2"]
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-9-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-19-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-2-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-3-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-18-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-17-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-16-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-13-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-7-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-14-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-11-30-May-2020.chr10.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_monosomies/CHA-S-1-30-May-2020.CHA-S-8-30-May-2020.chr10.LLR.p.bz2"]
 
 #filenames = [
 #"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe/TSA-M-1-21-Jul-2020.TSA-M-1-21-Jul-2020.chr15.LLR.p.bz2",
 #"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe/TSA-M-1-21-Jul-2020.TSA-M-2-21-Jul-2020.chr15.LLR.p.bz2"]
 
 filenames = [
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-37-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-36-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-35-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-34-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-32-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-31-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-29-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-28-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-27-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-26-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-24-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-23-retest-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-23-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-21-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-19-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-16-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-15-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-13-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-8-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-7-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-6-20-Sep-2020.chr16.LLR.p.bz2",
-"/Users/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/AGI-J-37-20-Sep-2020.AGI-J-3-20-Sep-2020.chr16.LLR.p.bz2"
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-2-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-3-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-4-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-6-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-7-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-8-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-9-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-10-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-11-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-14-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-15-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-16-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-17-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-18-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-19-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-20-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-21-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-22-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-23-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-25-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-28-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-29-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-30-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-31-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-35-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-36-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-40-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-42-29-Jul-2021.chr15.LLR.p.bz2",
+"/home/ariad/Dropbox/postdoc_JHU/Project2_Trace_Crossovers/CC_analysis/results/CReATe_haploids/BEN-A-A-29-29-Jul-2021.BEN-A-A-44-29-Jul-2021.chr15.LLR.p.bz2"
 ]
 #wrap_single_plot(llr_filename=filenames[0])
 
