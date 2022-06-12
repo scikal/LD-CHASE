@@ -19,7 +19,7 @@ from DISTANT_ADMIXTURE_MODELS import distant_admixture
 
 from itertools import product, starmap, chain
 from functools import reduce
-from operator import and_
+from operator import and_, attrgetter
 from statistics import mean, variance, pstdev
 from math import comb, log
 
@@ -431,6 +431,9 @@ def contrast(disomy_obs_filename,monosomy_obs_filename,leg_filename,
         monosomy_info = pickle.load(obs_in)
 
     assert monosomy_info['chr_id']==disomy_info['chr_id'] , "error: the chr_id in the observations tables does not match."
+    
+    assert {*map(attrgetter('read_id'),disomy_obs_tab)}.isdisjoint({*map(attrgetter('read_id'),monosomy_obs_tab)}), "error: disomy_obs_tab and monosomy_obs_tab share common read IDs."
+    
 
     ancestry = set(ancestral_makeup.keys()) if type(ancestral_makeup)==dict else set(ancestral_makeup)
     assert ancestry=={*hap_tab}, 'error: the given ancestral makup does match the superpopulations (group2) in the reference panel.'
