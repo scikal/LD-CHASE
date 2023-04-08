@@ -1,4 +1,4 @@
-**LD-CHASE (previously Contrast-Crossovers) ** - _A tool for Haplotype-aware inference of human chromosome crossovers._
+**LD-CHASE** (previously known as Contrast-Crossovers) - _A tool for Haplotype-aware inference of human chromosome crossovers._
 
 ![CC_scheme](https://github.com/scikal/contrast-crossovers/blob/main/illustrations/CC_fig1.png)
 Recombination between homologous chromosomes is a key source of human genetic diversity. The crossovers that mediate such genetic exchanges during meiosis are also important for ensuring the accuracy of chromosome segregation. In female meiosis, such crossovers are established early in fetal development and must be maintained for decades until meiosis resumes at ovulation. Understanding the landscape of meiotic recombination, its variation across individuals, and the processes by which it goes awry represent long-standing goals of human genetics.
