@@ -1,7 +1,7 @@
 ## Table of Contents
 
 #### Introduction
-[What is Contrast-Crossovers good for?](#background)
+[What is LD-CHASE good for?](#background)
 
 #### Tutorial
 [Stage 1: Sequence alignment](#seq_alignment) \
@@ -17,7 +17,7 @@
 [Generating IMPUTE2 reference panels from a VCF file](#"VCF2IMPUTE")
 [Dependencies](#"Dependencies")
 
-# What is Contrast-Crossovers good for? #
+# What is LD-CHASE good for? #
 <a name="background"/>
 
 Recombination between homologous chromosomes is a key source of human genetic diversity. The crossovers that mediate such genetic exchanges during meiosis are also important for ensuring the accuracy of chromosome segregation. In female meiosis, such crossovers are established early in fetal development and must be maintained for decades until meiosis resumes at ovulation. Understanding the landscape of meiotic recombination, its variation across individuals, and the processes by which it goes awry represent long-standing goals of human genetics.
@@ -25,7 +25,7 @@ Recombination between homologous chromosomes is a key source of human genetic di
 Current approaches for inferring the landscape of recombination either rely on population patterns of linkage disequilibrium—capturing a time-averaged view of historical recombination events—or direct detection of crossovers based on genotyping of haploid gametes or families (e.g., parent-offspring trios), limiting the scale and availability of relevant datasets.
 Here we take another approach that relies on the genetic analysis of blastocysts from fertility centers . The ability to reliably trace abnormalities in genome-wide ploidy is valuable for enhancing IVF outcomes and thus preimplantation genetic testing of aneuploidy (PGT-A) became a common practice during IVF; The shallow whole-genome sequencing of human blastocysts during genetic tests accumulated to large datasets, which can be exploited to study the recombination landscape in oocytes and its relation to aneuploidy. To this end, we introduce an approach for inferring recombination from retrospective analysis of data from preimplantation genetic testing (PGT-A), which is based on low-coverage (<0.05x) whole-genome sequencing of biopsies from in vitro fertilized (IVF) embryos.
 
-Our method overcomes the sparsity of the sequencing data by exploiting its inherent relatedness structure, knowledge of haplotypes from external population reference panels, as well as the frequent occurrence of chromosome loss (whereby the remaining chromosome is “phased” by default). Based on extensive simulation, we show that our method retains high accuracy down to coverages as low as 0.02x.  In addition, it can serve as a practical tool for karyomapping, when a single sperm is sequenced on an ad hoc basis to contrast crossovers of sibling embryos. Thus, CC holds promise to improve preimplantation genetic testing for monogenic disorders (PGT-M) during IVF.
+Our method overcomes the sparsity of the sequencing data by exploiting its inherent relatedness structure, knowledge of haplotypes from external population reference panels, as well as the frequent occurrence of chromosome loss (whereby the remaining chromosome is “phased” by default). Based on extensive simulation, we show that our method retains high accuracy down to coverages as low as 0.02x.  In addition, it can serve as a practical tool for karyomapping, when a single sperm is sequenced on an ad hoc basis to contrast crossovers of sibling embryos. Thus, LD-CHASE holds promise to improve preimplantation genetic testing for monogenic disorders (PGT-M) during IVF.
 
 **For more information:**
 > Daniel Ariad, Stephanie M. Yan, Andrea R. Victor, Frank L. Barnes, Christo G. Zouves, Manuel Viotti, Rajiv C. McCoy. “Haplotype-aware inference of human chromosome abnormalities” | [PNAS November 16, 2021 118 (46) e2109307118](https://doi.org/10.1073/pnas.2109307118) | [bioRxiv:10.1101/2021.05.18.444721](https://www.biorxiv.org/content/10.1101/2021.05.18.444721v3) | [The study is summarized in this poster](http://ariad.org/_media/research/posters/ld_pgta_poster.pdf)
@@ -33,12 +33,7 @@ Our method overcomes the sparsity of the sequencing data by exploiting its inher
 # Stage 1: Sequence alignment #
 <a name="seq_alignment"/>
 
-## Convert the sequence SRR6676163 from SRA to FASTQ ##
-To demonstrate the use of LD-PGTA, we can obtain a trisomic sample from SRA.
-
-`wget 'https://sra-downloadb.be-md.ncbi.nlm.nih.gov/sos1/sra-pub-run-2/SRR6676163/SRR6676163.1'`\
-`mv SRR6676163.1 SRR6676163.sra`\
-`fastq-dump ./SRR6676163.sra --gzip `
+## Obtain FASTQ files of sibling embryos, where one of the embryos has a monosomy. ##
 
 ## Prepare a reference genome for alignment ##
 We next prepare a primary assembly of the reference genome hg38 (here GRCh38/hg38 refers to the UCSC release, Dec. 2013):
@@ -99,7 +94,7 @@ Next, we create an index from the BAM file with the samtools index subcommand:
 
 # Stage 2: Construction of the reference panel #
 <a name="ref_panel"/>
-As described in our manuscript, Contrast-Crossovers overcomes the sparse nature of low-coverage data by using information about allele frequencies and haplotype structure as measured in a population reference panel. Here we demonstrate the construction of such a reference panel using data from the 1000 Genomes Project.
+As described in our manuscript, LD-CHASE overcomes the sparse nature of low-coverage data by using information about allele frequencies and haplotype structure as measured in a population reference panel. Here we demonstrate the construction of such a reference panel using data from the 1000 Genomes Project.
 
 ## Download VCF files from the 1000 Genome Project Phase 3 ##
 
@@ -120,11 +115,11 @@ Reference: [High coverage whole genome sequencing of the expanded 1000 Genomes P
 
 Create an IMPUTE2 sample file, as explained in this [section](#IMPUTE2). In order to generate such a list for the 1000 genome project phase 3 visit https://www.internationalgenome.org/data-portal/sample.
 
-**One important note**: the columns of SAMPLE file for population, group, and sex expected to be filled by the user. Contrast-Crossovers uses the values in the group column to differentiate between samples that are associated to distinct super-populations, and thus providing this information is required.
+**One important note**: the columns of SAMPLE file for population, group, and sex expected to be filled by the user. LD-CHASE uses the values in the group column to differentiate between samples that are associated to distinct super-populations, and thus providing this information is required.
 
 ## Generate a reference panel ##
 
-The script `MAKE_REF_PANEL.py` creates reference panels for Contrast-Crossovers, using phased genotypes in VCF files. A reference panel of Contrast-Crossovers follows the structure of the IMPUTE2 format and consist of three files: sample, legend and haplotypes. However,the reference panel is stored as binary files for efficient storage and retrieval.
+The script `MAKE_REF_PANEL.py` creates reference panels for LD-CHASE, using phased genotypes in VCF files. A reference panel of LD-CHASE follows the structure of the IMPUTE2 format and consist of three files: sample, legend and haplotypes. However,the reference panel is stored as binary files for efficient storage and retrieval.
 
 We run the script with the following arguments and flags:
 
@@ -216,7 +211,7 @@ aneuploidy landscapes.  When a few LLR files are given, a panel of plots would b
 # Simulating sequences of disomy and monosomy #
 <a name="simulate"/>
 
-To further demonstrate and evaluate Contrast-Crossovers and other methods, it can be useful to simulate disomies and monosomies with various ancestral makeup. This can be accomplished by drawing haplotypes from a reference panel such as the 1000 Genomes Project, and mixing them in defined proportions.
+To further demonstrate and evaluate LD-CHASE and other methods, it can be useful to simulate disomies and monosomies with various ancestral makeup. This can be accomplished by drawing haplotypes from a reference panel such as the 1000 Genomes Project, and mixing them in defined proportions.
 
 ## Creating mixtures of haploid sequences ##
 
